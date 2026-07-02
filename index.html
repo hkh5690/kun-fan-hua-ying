@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1A3C6E">
+<title>鲲繁花影 · 接单管理</title>
+
+<!-- Supabase JS SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Styles -->
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     LOGIN / REGISTER PAGE
+     ══════════════════════════════════════════ -->
+<div class="login-page" id="loginPage">
+  <div class="logo-area">
+    <div class="logo-icon">🌸</div>
+    <div class="logo-title">鲲繁花影</div>
+    <div class="logo-subtitle">接单管理系统</div>
+  </div>
+
+  <div class="form-card">
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabLogin" onclick="switchMode('login')">登录</button>
+      <button class="mode-tab" id="tabRegister" onclick="switchMode('register')">注册</button>
+    </div>
+
+    <div class="first-user-hint" id="firstUserHint" style="display:none;">
+      🎉 欢迎！首位注册用户将自动成为<strong style="color:#E53E3E;">管理员</strong>
+    </div>
+
+    <div class="input-group">
+      <span class="input-icon">📧</span>
+      <input class="login-input" type="email" id="loginUsername" placeholder="请输入邮箱" autocomplete="email">
+    </div>
+
+    <div class="input-group">
+      <span class="input-icon">🔒</span>
+      <input class="login-input" type="password" id="loginPassword" placeholder="请输入密码（至少6位）" autocomplete="current-password">
+    </div>
+
+    <div class="input-group" id="confirmPwdGroup" style="display:none;">
+      <span class="input-icon">🔐</span>
+      <input class="login-input" type="password" id="loginConfirmPwd" placeholder="请再次输入密码" autocomplete="off">
+    </div>
+
+    <div class="error-msg" id="loginError"></div>
+
+    <button class="submit-btn" id="submitBtn" onclick="App.handleLoginSubmit()">登 录</button>
+
+    <div class="switch-hint" id="switchHint" onclick="switchMode(null)">还没有账号？点击注册</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MAIN APP (hidden until login)
+     ══════════════════════════════════════════ -->
+<div class="app-container" id="appContainer">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <span>🌸</span>
+      <span class="header-logo">鲲繁花影</span>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-page="orders">📋 订单列表</button>
+      <button class="nav-tab" data-page="dashboard">📊 数据看板</button>
+      <button class="nav-tab" data-page="settings">⚙️ 设置</button>
+    </nav>
+    <div class="header-right">
+      <button class="user-badge" onclick="App.switchPage('settings')" title="查看个人信息">
+        <span class="role-dot" id="roleDot"></span>
+        <span id="headerUsername">--</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- ════════════ PAGE 1: 订单列表 ════════════ -->
+    <div class="page active" id="page-orders">
+      <div class="stats-row" id="statsRow"></div>
+
+      <div class="toolbar">
+        <input type="text" class="search-box" id="searchInput" placeholder="🔍 搜索客户名、标题、描述...">
+        <select class="filter-select" id="filterStatus">
+          <option value="">全部状态</option>
+          <option value="待付定金">待付定金</option>
+          <option value="进行中">进行中</option>
+          <option value="待付尾款">待付尾款</option>
+          <option value="已完成">已完成</option>
+          <option value="已取消">已取消</option>
+        </select>
+        <select class="filter-select" id="filterType">
+          <option value="">全部类型</option>
+          <option value="视频剪辑">视频剪辑</option>
+          <option value="PPT制作">PPT制作</option>
+          <option value="朗诵背景视频">朗诵背景视频</option>
+          <option value="网页制作">网页制作</option>
+          <option value="其他">其他</option>
+        </select>
+        <select class="filter-select" id="sortBy">
+          <option value="-created_at">最新优先</option>
+          <option value="created_at">最早优先</option>
+          <option value="-total_price">金额高→低</option>
+          <option value="total_price">金额低→高</option>
+          <option value="deadline">截止日期</option>
+        </select>
+      </div>
+
+      <div class="order-list" id="orderList"></div>
+      <div class="empty-state" id="emptyState" style="display:none;">
+        <div class="icon">📭</div>
+        <p>还没有订单记录</p>
+        <p style="font-size:12px;margin-top:4px;color:#A0AEC0;">点击右下角 + 按钮创建第一单</p>
+      </div>
+
+      <div class="detail-panel" id="detailPanel"></div>
+    </div>
+
+    <!-- ════════════ PAGE 2: 数据看板 ════════════ -->
+    <div class="page" id="page-dashboard">
+      <div class="dash-grid" id="dashGrid"></div>
+    </div>
+
+    <!-- ════════════ PAGE 3: 设置 ════════════ -->
+    <div class="page" id="page-settings">
+      <!-- 用户信息 -->
+      <div class="settings-card user-profile-card">
+        <div class="user-avatar-big">👤</div>
+        <div>
+          <div style="font-size:18px;font-weight:700;" id="profileUsername">--</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">
+            <span class="tag" id="profileRoleTag">--</span>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-danger logout-btn" onclick="App.logout()" style="justify-content:center;">🚪 退出登录</button>
+
+      <!-- 管理员功能区 -->
+      <div id="adminSection" style="display:none;">
+        <div class="admin-divider">
+          <span class="admin-divider-text">🔧 管理员功能</span>
+        </div>
+
+        <div class="settings-card">
+          <h3>📤 导出数据</h3>
+          <p>将所有订单导出为 CSV 文件（可用 Excel / WPS 打开），或导出 JSON 备份。</p>
+          <button class="btn btn-primary" onclick="Settings.exportCSV(App.orders)">导出 CSV</button>
+          <button class="btn btn-outline" style="margin-left:8px;" onclick="Settings.exportJSON(App.orders)">导出 JSON（备份）</button>
+        </div>
+
+        <div class="settings-card">
+          <h3>📥 导入备份</h3>
+          <p>从之前导出的 JSON 备份文件恢复数据。<strong style="color:#E53E3E;">注意：会覆盖当前全部数据。</strong></p>
+          <button class="btn btn-outline" id="toggleImportBtn" onclick="Settings.toggleImport()">粘贴 JSON 文本导入</button>
+          <div id="importArea" style="display:none;">
+            <textarea class="import-textarea" id="importText" placeholder="请在此粘贴 JSON 备份内容..."></textarea>
+            <button class="btn btn-primary" style="margin-top:8px;" onclick="Settings.doImport()">确认导入</button>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <h3>👥 账号管理</h3>
+          <p>管理系统中的注册用户。</p>
+          <button class="btn btn-outline" id="toggleUserMgmtBtn" onclick="Settings.toggleUserMgmt()">查看用户列表</button>
+          <div id="userListArea" style="margin-top:12px;display:none;"></div>
+        </div>
+
+        <div class="settings-card danger-zone">
+          <h3>⚠️ 清空全部数据</h3>
+          <p>此操作不可恢复。建议先导出备份。</p>
+          <button class="btn btn-danger" onclick="Settings.confirmClearAll()">清空所有订单</button>
+        </div>
+
+        <div class="settings-card">
+          <h3>🔄 示例数据</h3>
+          <p>如果你是第一次使用，可以加载示例数据来体验功能。</p>
+          <button class="btn btn-outline" onclick="Settings.loadDemoData(App.orders)">加载示例数据</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAB -->
+  <button class="fab" id="fabBtn" title="新增订单" onclick="App.openModal()">+</button>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Add/Edit Modal
+     ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">新增订单</h3>
+      <button class="modal-close" onclick="App.closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="orderForm" onsubmit="App.saveOrder(event)">
+        <input type="hidden" id="editId">
+        <div class="form-row">
+          <div class="form-group">
+            <label>客户名称 *</label>
+            <input type="text" id="fCustomer" required placeholder="拼多多昵称或姓名">
+          </div>
+          <div class="form-group">
+            <label>联系方式</label>
+            <input type="text" id="fContact" placeholder="微信/旺旺/手机">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>订单编号</label>
+            <input type="text" id="fOrderNumber" placeholder="自动生成，可手动修改">
+          </div>
+          <div class="form-group">
+            <label>制作人</label>
+            <input type="text" id="fProducer" placeholder="你的名字或昵称">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>服务类型 *</label>
+            <select id="fServiceType" required>
+              <option value="">请选择</option>
+              <option value="视频剪辑">视频剪辑</option>
+              <option value="PPT制作">PPT制作</option>
+              <option value="朗诵背景视频">朗诵背景视频</option>
+              <option value="网页制作">网页制作</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>状态</label>
+            <select id="fStatus">
+              <option value="待付定金">待付定金</option>
+              <option value="进行中">进行中</option>
+              <option value="待付尾款">待付尾款</option>
+              <option value="已完成">已完成</option>
+              <option value="已取消">已取消</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>项目标题 *</label>
+          <input type="text" id="fTitle" required placeholder="例如：朗诵《再别康桥》背景视频">
+        </div>
+        <div class="form-group">
+          <label>详细需求 / 备注</label>
+          <textarea id="fDesc" rows="3" placeholder="客户的具体要求、风格偏好、参考链接等..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>总金额 (¥)</label>
+            <input type="number" id="fTotal" placeholder="0" step="0.01" min="0" onchange="autoCalcBalance()">
+          </div>
+          <div class="form-group">
+            <label>已付定金 (¥)</label>
+            <input type="number" id="fDeposit" placeholder="0" step="0.01" min="0" onchange="autoCalcBalance()">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>待付尾款 (¥)</label>
+            <input type="number" id="fBalance" placeholder="自动计算" step="0.01" readonly style="background:#F7FAFC;">
+          </div>
+          <div class="form-group">
+            <label>截止日期</label>
+            <input type="date" id="fDeadline">
+          </div>
+        </div>
+        <div class="detail-actions" style="margin-top:8px;">
+          <button type="submit" class="btn btn-primary" id="modalSubmitBtn">💾 保存订单</button>
+          <button type="button" class="btn btn-outline" onclick="App.closeModal()">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Confirm Dialog
+     ══════════════════════════════════════════ -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <p id="confirmMsg"></p>
+    <div class="btn-row">
+      <button class="btn btn-danger" id="confirmYes">确认</button>
+      <button class="btn btn-outline" onclick="Utils.closeConfirm()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════════
+     SCRIPTS (按依赖顺序加载)
+     ══════════════════════════════════════════ -->
+<!-- 初始化 Supabase 客户端（包含占位符配置，部署前替换） -->
+<script src="js/supabase-client.js"></script>
+<!-- 工具函数 -->
+<script src="js/utils.js"></script>
+<!-- 认证模块 -->
+<script src="js/auth.js"></script>
+<!-- 订单数据模块 -->
+<script src="js/orders.js"></script>
+<!-- 数据看板 -->
+<script src="js/dashboard.js"></script>
+<!-- 设置模块 -->
+<script src="js/settings.js"></script>
+<!-- 主应用逻辑 -->
+<script src="js/app.js"></script>
+
+<!-- 登录模式切换（复用原逻辑） -->
+<script>
+let loginMode = 'login';
+
+function switchMode(mode) {
+  loginMode = mode || (loginMode === 'login' ? 'register' : 'login');
+  document.getElementById('tabLogin').classList.toggle('active', loginMode === 'login');
+  document.getElementById('tabRegister').classList.toggle('active', loginMode === 'register');
+  document.getElementById('submitBtn').textContent = loginMode === 'login' ? '登 录' : '注 册';
+  document.getElementById('switchHint').textContent = loginMode === 'login' ? '还没有账号？点击注册' : '已有账号？点击登录';
+  document.getElementById('confirmPwdGroup').style.display = loginMode === 'register' ? 'flex' : 'none';
+  document.getElementById('loginError').textContent = '';
+}
+
+function autoCalcBalance() {
+  const total = parseFloat(document.getElementById('fTotal').value) || 0;
+  const deposit = parseFloat(document.getElementById('fDeposit').value) || 0;
+  document.getElementById('fBalance').value = Math.max(0, total - deposit).toFixed(2);
+}
+
+// 启动应用
+document.addEventListener('DOMContentLoaded', () => {
+  App.init();
+});
+</script>
+
+</body>
+</html>

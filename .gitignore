@@ -1,0 +1,5 @@
+# 鲲繁花影 - Git Ignore
+.DS_Store
+Thumbs.db
+*.log
+.env
