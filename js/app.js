@@ -489,7 +489,11 @@ const App = {
     } else {
       // 登录
       try {
-        await Auth.signIn(email, password);
+        const user = await Auth.signIn(email, password);
+        if (!user) {
+          errEl.textContent = '登录失败，请检查数据库配置或联系管理员';
+          return;
+        }
         Utils.showToast('✅ 登录成功！');
       } catch (err) {
         errEl.textContent = err.message;

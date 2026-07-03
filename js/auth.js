@@ -85,6 +85,9 @@ const Auth = {
 
     // 获取角色信息
     await this.getCurrentUser();
+    if (!this.currentUser) {
+      throw new Error('账号尚未激活，请确认数据库触发器是否已配置。如需帮助请联系管理员。');
+    }
     return this.currentUser;
   },
 
