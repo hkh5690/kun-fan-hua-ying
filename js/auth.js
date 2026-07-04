@@ -64,6 +64,23 @@ const Auth = {
       throw new Error(error.message);
     }
 
+    // 自动确认邮箱（服务端通过 service_role key 完成）
+    if (data.user && !data.user.email_confirmed_at) {
+      try {
+        const res = await fetch('/api/confirm-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: data.user.id }),
+        });
+        if (!res.ok) {
+          console.warn('邮箱自动确认失败:', await res.text());
+        }
+      } catch (e) {
+        // API 不可用时静默失败，不影响注册流程
+        console.warn('邮箱自动确认接口不可用:', e.message);
+      }
+    }
+
     return data;
   },
 
