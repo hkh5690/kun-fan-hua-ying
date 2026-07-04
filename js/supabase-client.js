@@ -17,7 +17,7 @@ if (typeof SUPABASE_CONFIG !== 'undefined') {
 }
 
 // 初始化 Supabase 客户端
-const supabase = window.supabase.createClient(
+var supabase = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
   {
