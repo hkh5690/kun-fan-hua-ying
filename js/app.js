@@ -1,33 +1,29 @@
 /**
- * 主应用逻辑 — 鲲繁花影
- * 协调认证、订单列表、详情面板、模态框等
+ * 主应用逻辑 — 鲲繁花影 v3
+ * 暗色主题，4 层布局，表格渲染
  */
 
 const App = {
   orders: [],
   selectedId: null,
+  _activeStatusFilter: 'all',
 
   /**
    * 初始化应用
    */
   async init() {
-    // 绑定事件
     this.bindEvents();
 
-    // 检查现有会话
     const { data: { session } } = await supabase.auth.getSession();
 
     if (session) {
-      // 已登录
       await Auth.getCurrentUser();
       this.showApp();
       await this.refreshOrders();
     } else {
-      // 未登录
       this.showLogin();
     }
 
-    // 监听认证状态变化
     Auth.onAuthStateChange(async (event, user) => {
       if (event === 'SIGNED_IN') {
         this.showApp();
@@ -42,18 +38,15 @@ const App = {
    * 绑定全局事件
    */
   bindEvents() {
-    // 导航切换
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-      tab.addEventListener('click', function () {
-        App.switchPage(this.dataset.page);
-      });
-    });
-
-    // 筛选器
+    // 搜索框
     document.getElementById('searchInput').addEventListener('input', () => this.renderOrders());
-    document.getElementById('filterStatus').addEventListener('change', () => this.renderOrders());
-    document.getElementById('filterType').addEventListener('change', () => this.renderOrders());
-    document.getElementById('sortBy').addEventListener('change', () => this.renderOrders());
+
+    // Header 状态筛选标签
+    document.getElementById('statusFilterTabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('.status-tab');
+      if (!tab) return;
+      this.filterByStatus(tab.dataset.filter);
+    });
 
     // 模态框背景点击关闭
     document.getElementById('modalOverlay').addEventListener('click', function (e) {
@@ -85,16 +78,27 @@ const App = {
   },
 
   /**
+   * 状态筛选
+   */
+  filterByStatus(status) {
+    this._activeStatusFilter = status;
+    // 更新标签 active 样式
+    document.querySelectorAll('#statusFilterTabs .status-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.filter === status);
+    });
+    this.renderOrders();
+  },
+
+  /**
    * 显示登录页
    */
   showLogin() {
     document.getElementById('loginPage').style.display = 'flex';
     document.getElementById('appContainer').classList.remove('logged-in');
+    document.getElementById('mainToolbar').style.display = 'none';
     document.getElementById('adminSection').style.display = 'none';
     this.orders = [];
     this.selectedId = null;
-
-    // 检查是否有用户
     this.checkFirstUser();
   },
 
@@ -107,14 +111,19 @@ const App = {
 
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('appContainer').classList.add('logged-in');
+    document.getElementById('mainToolbar').style.display = 'flex';
+
+    // Header 用户信息
     document.getElementById('headerUsername').textContent = user.username;
+    document.getElementById('headerAvatar').textContent = (user.username || '?')[0].toUpperCase();
 
-    const dot = document.getElementById('roleDot');
-    dot.className = 'role-dot ' + (user.role === 'admin' ? 'admin' : 'user');
-
+    // 设置页信息
     document.getElementById('profileUsername').textContent = user.username;
+    document.getElementById('profileEmail').textContent = user.email;
+    document.getElementById('profileAvatar').textContent = (user.username || '?')[0].toUpperCase();
     document.getElementById('profileRoleTag').textContent = user.role === 'admin' ? '👑 管理员' : '👤 普通用户';
-    document.getElementById('profileRoleTag').className = 'tag ' + (user.role === 'admin' ? 'tag-cancel' : 'tag-video');
+    document.getElementById('profileRoleTag').className = 'role-badge ' + (user.role === 'admin' ? 'admin' : 'user');
+    document.getElementById('profileUserId').textContent = 'ID: ' + (user.id || '').substring(0, 8) + '...';
 
     if (user.role === 'admin') {
       document.getElementById('adminSection').style.display = 'block';
@@ -131,9 +140,6 @@ const App = {
    * 检查是否需要显示注册模式
    */
   async checkFirstUser() {
-    const { data, error } = await supabase.from('user_roles').select('id', { count: 'exact', head: true });
-    const userCount = data ? (error ? 0 : data.length || 0) : 0; // Supabase count returns in different ways
-    // 用另一种方式检查
     const { data: users } = await supabase.from('user_roles').select('id');
     const count = users ? users.length : 0;
 
@@ -154,11 +160,21 @@ const App = {
     try {
       this.orders = await Orders.fetchOrders();
       this.renderOrders();
+      this.renderRevenue();
     } catch (err) {
       Utils.showToast('❌ ' + err.message);
       this.orders = [];
       this.renderOrders();
+      this.renderRevenue();
     }
+  },
+
+  /**
+   * 更新 Header 中的总收入
+   */
+  renderRevenue() {
+    const total = this.orders.reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0);
+    document.getElementById('headerRevenue').textContent = '💰 ¥' + total.toLocaleString('zh-CN');
   },
 
   /**
@@ -170,7 +186,7 @@ const App = {
     const thisYear = now.getFullYear();
     const totalOrders = filteredOrders.length;
     const thisMonthOrders = filteredOrders.filter(o => {
-      const d = new Date(o.order_date);
+      const d = new Date(o.created_at);
       return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
     });
     const thisMonthIncome = thisMonthOrders.reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0);
@@ -187,87 +203,86 @@ const App = {
   },
 
   /**
-   * 渲染订单列表
+   * 获取状态对应的 CSS class
+   */
+  _getStatusClass(status) {
+    const map = {
+      '待付定金': 'deposit',
+      '进行中': 'progress',
+      '待付尾款': 'balance',
+      '已完成': 'done',
+      '已取消': 'cancel',
+    };
+    return map[status] || 'progress';
+  },
+
+  /**
+   * 渲染订单表格
    */
   renderOrders() {
     const search = document.getElementById('searchInput').value.toLowerCase();
-    const statusFilter = document.getElementById('filterStatus').value;
-    const typeFilter = document.getElementById('filterType').value;
-    const sortByVal = document.getElementById('sortBy').value;
+    const statusFilter = this._activeStatusFilter;
 
     let filtered = this.orders.filter(o => {
-      if (statusFilter && o.status !== statusFilter) return false;
-      if (typeFilter && o.service_type !== typeFilter) return false;
+      if (statusFilter !== 'all' && o.status !== statusFilter) return false;
       if (search) {
-        const haystack = (o.customer + ' ' + o.title + ' ' + (o.description || '') + ' ' + (o.contact || '')).toLowerCase();
+        const haystack = (o.customer + ' ' + o.title + ' ' + (o.order_number || '') + ' ' + (o.description || '')).toLowerCase();
         if (!haystack.includes(search)) return false;
       }
       return true;
     });
 
-    // Sort
-    const desc = sortByVal.startsWith('-');
-    const key = desc ? sortByVal.slice(1) : sortByVal;
-    const dbKeyMap = {
-      'createdAt': 'created_at',
-      'totalPrice': 'total_price',
-      'deposit': 'deposit',
-      'balance': 'balance',
-      'orderDate': 'order_date',
-      'deadline': 'deadline',
-    };
-    const sortKey = dbKeyMap[key] || key;
-
-    filtered.sort((a, b) => {
-      let va = a[sortKey], vb = b[sortKey];
-      if (['total_price', 'deposit', 'balance'].includes(sortKey)) {
-        va = parseFloat(va) || 0;
-        vb = parseFloat(vb) || 0;
-      }
-      if (['created_at', 'order_date', 'deadline'].includes(sortKey)) {
-        va = va || '';
-        vb = vb || '';
-      }
-      if (va < vb) return desc ? 1 : -1;
-      if (va > vb) return desc ? -1 : 1;
-      return 0;
-    });
+    // 按创建时间倒序
+    filtered.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
 
     this.renderStats(filtered);
 
-    const list = document.getElementById('orderList');
-    const empty = document.getElementById('emptyState');
+    const tableWrap = document.getElementById('orderTableWrap');
+    const emptyState = document.getElementById('emptyState');
 
     if (filtered.length === 0) {
-      list.innerHTML = '';
-      empty.style.display = 'block';
+      tableWrap.innerHTML = '';
+      tableWrap.style.display = 'none';
+      emptyState.style.display = 'flex';
     } else {
-      empty.style.display = 'none';
-      list.innerHTML = filtered.map(o => `
-        <div class="order-card ${this.selectedId === o.id ? 'selected' : ''}" onclick="App.toggleDetail('${o.id}')">
-          <div class="order-main">
-            <div class="order-header">
-              ${o.order_number ? `<span style="font-size:11px;color:var(--primary);font-weight:600;margin-right:4px;">${Utils.escHtml(o.order_number)}</span>` : ''}
-              <span class="order-customer">${Utils.escHtml(o.customer)}</span>
-              <span class="tag ${Utils.getServiceTypeTag(o.service_type)}">${o.service_type}</span>
-              <span class="tag ${Utils.getStatusTag(o.status)}">${o.status}</span>
-              ${o.deadline ? `<span class="deadline-text ${Utils.isDeadlineUrgent(o.deadline) ? 'deadline-urgent' : ''}">📅 ${Utils.formatDate(o.deadline)}</span>` : ''}
-            </div>
-            <div class="order-title-text">${Utils.escHtml(o.title) || '（无标题）'}</div>
-            <div class="order-meta">
-              <span>定金 ${Utils.formatMoney(o.deposit)}</span>
-              <span>尾款 ${Utils.formatMoney(o.balance)}</span>
-              <span>下单 ${Utils.formatDate(o.order_date)}</span>
-              ${Auth.isAdmin() ? `<span style="color:var(--primary-light);">👤 ${Utils.escHtml(o.created_by || '?')}</span>` : ''}
-            </div>
-          </div>
-          <div class="order-price">
-            ${Utils.formatMoney(o.total_price)}
-            <small>总价</small>
-          </div>
-        </div>
-      `).join('');
+      emptyState.style.display = 'none';
+      tableWrap.style.display = 'block';
+
+      const rows = filtered.map(o => {
+        const statusClass = this._getStatusClass(o.status);
+        const statusText = o.status;
+        const canEdit = Auth.isAdmin() || (Auth.currentUser && Auth.currentUser.id === o.created_by);
+        return `
+          <tr onclick="App.toggleDetail('${o.id}')" class="${this.selectedId === o.id ? 'row-selected' : ''}">
+            <td style="font-size:11px;color:var(--text-muted);">${Utils.escHtml((o.order_number || o.id).substring(0, 12))}</td>
+            <td class="cell-customer">${Utils.escHtml(o.customer)}</td>
+            <td class="cell-title" title="${Utils.escHtml(o.title || '')}">${Utils.escHtml(o.title || '（无标题）')}</td>
+            <td class="cell-amount">${Utils.formatMoney(o.total_price)}</td>
+            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+            <td class="cell-actions" onclick="event.stopPropagation();">
+              ${canEdit ? `<button onclick="App.openModal('${o.id}')" title="编辑">✏️</button><button class="btn-del" onclick="App.deleteOrder('${o.id}')" title="删除">🗑️</button>` : '<span style="font-size:11px;color:var(--text-muted);">🔒</span>'}
+            </td>
+          </tr>`;
+      }).join('');
+
+      tableWrap.innerHTML = `
+        <table class="order-table">
+          <thead>
+            <tr>
+              <th>编号</th>
+              <th>客户</th>
+              <th>项目</th>
+              <th style="text-align:right;">金额</th>
+              <th>状态</th>
+              <th style="text-align:center;">操作</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
     }
+
+    this.renderDetailPanel();
   },
 
   /**
@@ -301,12 +316,13 @@ const App = {
     }
 
     const canEdit = Auth.isAdmin() || (Auth.currentUser && Auth.currentUser.id === o.created_by);
+    const statusClass = this._getStatusClass(o.status);
 
     panel.classList.add('open');
     panel.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <h3 style="font-size:15px;">📝 ${Utils.escHtml(o.title) || '订单详情'}</h3>
-        <span class="tag ${Utils.getStatusTag(o.status)}">${o.status}</span>
+        <h3 style="font-size:15px;color:var(--text);">📝 ${Utils.escHtml(o.title) || '订单详情'}</h3>
+        <span class="status-badge ${statusClass}">${o.status}</span>
       </div>
       <div class="detail-grid">
         <div><div class="dl-label">订单编号</div><div class="dl-value" style="color:var(--primary);font-weight:600;">${Utils.escHtml(o.order_number) || '-'}</div></div>
@@ -314,8 +330,8 @@ const App = {
         <div><div class="dl-label">客户</div><div class="dl-value">${Utils.escHtml(o.customer)}</div></div>
         <div><div class="dl-label">联系方式</div><div class="dl-value">${Utils.escHtml(o.contact) || '-'}</div></div>
         <div><div class="dl-label">服务类型</div><div class="dl-value"><span class="tag ${Utils.getServiceTypeTag(o.service_type)}">${o.service_type}</span></div></div>
-        <div><div class="dl-label">下单日期</div><div class="dl-value">${Utils.formatDate(o.order_date)}</div></div>
-        <div><div class="dl-label">总价</div><div class="dl-value" style="font-weight:700;color:var(--primary-dark)">${Utils.formatMoney(o.total_price)}</div></div>
+        <div><div class="dl-label">下单日期</div><div class="dl-value">${Utils.formatDate(o.order_date || o.created_at)}</div></div>
+        <div><div class="dl-label">总价</div><div class="dl-value" style="font-weight:700;color:var(--gold)">${Utils.formatMoney(o.total_price)}</div></div>
         <div><div class="dl-label">截止日期</div><div class="dl-value ${Utils.isDeadlineUrgent(o.deadline) ? 'deadline-urgent' : ''}">${o.deadline ? Utils.formatDate(o.deadline) : '不限'}</div></div>
         <div><div class="dl-label">已付定金</div><div class="dl-value" style="color:var(--warning)">${Utils.formatMoney(o.deposit)}</div></div>
         <div><div class="dl-label">待付尾款</div><div class="dl-value" style="color:var(--danger)">${Utils.formatMoney(o.balance)}</div></div>
@@ -325,25 +341,35 @@ const App = {
 
       ${canEdit ? `
       <div class="detail-actions">
-        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();App.openModal('${o.id}')">✏️ 编辑</button>
-        <button class="btn btn-sm btn-success" onclick="event.stopPropagation();App.quickStatus('${o.id}','已完成')">✅ 标记完成</button>
-        <button class="btn btn-sm btn-outline" onclick="event.stopPropagation();App.quickStatus('${o.id}','进行中')">▶️ 开始制作</button>
-        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();App.deleteOrder('${o.id}')">🗑️ 删除</button>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();App.openModal('${o.id}')">✏️ 编辑</button>
+        <button class="btn btn-success btn-sm" onclick="event.stopPropagation();App.quickStatus('${o.id}','已完成')">✅ 标记完成</button>
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();App.quickStatus('${o.id}','进行中')">▶️ 开始制作</button>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();App.deleteOrder('${o.id}')">🗑️ 删除</button>
       </div>` : `
       <div class="no-permission-hint">🔒 你无权修改此订单（仅创建者和管理员可操作）</div>
       `}
     `;
   },
 
-  /**
-   * 页面切换
-   */
+  // ── 页面切换 ──────────────────────────────
+
   switchPage(page) {
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    const targetTab = document.querySelector(`.nav-tab[data-page="${page}"]`);
-    if (targetTab) targetTab.classList.add('active');
+    // 更新页面内容区
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById('page-' + page).classList.add('active');
+    const targetPage = document.getElementById('page-' + page);
+    if (targetPage) targetPage.classList.add('active');
+
+    // 工具栏仅订单页显示
+    const toolbar = document.getElementById('mainToolbar');
+    const fab = document.getElementById('fabBtn');
+    if (page === 'orders') {
+      toolbar.style.display = 'flex';
+      fab.style.display = 'flex';
+    } else {
+      toolbar.style.display = 'none';
+      fab.style.display = 'none';
+    }
+
     if (page === 'dashboard') Dashboard.render(this.orders);
     if (page === 'settings' && Auth.isAdmin()) Settings.renderUserList();
   },
@@ -477,17 +503,22 @@ const App = {
 
     if (loginMode === 'register') {
       if (password !== confirmPwd) { errEl.textContent = '两次密码不一致'; return; }
-      // 注册：用 email 前缀作为默认用户名
+
+      const verifyCode = document.getElementById('loginVerifyCode').value.trim();
+      if (!verifyCode || verifyCode.length !== 6) { errEl.textContent = '请输入6位验证码'; return; }
+
+      if (!window._verifyToken) { errEl.textContent = '请先获取验证码'; return; }
+
       const username = email.split('@')[0];
       try {
-        await Auth.signUp(email, password, username);
+        await Auth.verifyAndSignUp(window._verifyToken, verifyCode, password, username);
+        window._verifyToken = null;
         Utils.showToast('🎉 注册成功！请登录');
         switchMode('login');
       } catch (err) {
         errEl.textContent = err.message;
       }
     } else {
-      // 登录
       try {
         const user = await Auth.signIn(email, password);
         if (!user) {
@@ -499,6 +530,37 @@ const App = {
         errEl.textContent = err.message;
       }
     }
+  },
+
+  sendVerificationCode() {
+    const email = document.getElementById('loginUsername').value.trim();
+    const errEl = document.getElementById('loginError');
+    const btn = document.getElementById('sendCodeBtn');
+
+    if (!email || !email.includes('@')) { errEl.textContent = '请输入正确的邮箱地址'; return; }
+
+    btn.disabled = true;
+    let countdown = 60;
+    btn.textContent = countdown + 's 后重发';
+    const timer = setInterval(() => {
+      countdown--;
+      if (countdown <= 0) { clearInterval(timer); btn.disabled = false; btn.textContent = '发送验证码'; }
+      else btn.textContent = countdown + 's 后重发';
+    }, 1000);
+
+    Auth.sendCode(email).then(result => {
+      window._verifyToken = result.token;
+      if (result.code) {
+        Utils.showToast('📧 验证码: ' + result.code + '（开发模式，稍后将通过邮件发送）');
+      } else {
+        Utils.showToast('📧 验证码已发送到 ' + email);
+      }
+    }).catch(e => {
+      errEl.textContent = e.message;
+      clearInterval(timer);
+      btn.disabled = false;
+      btn.textContent = '发送验证码';
+    });
   },
 
   async logout() {

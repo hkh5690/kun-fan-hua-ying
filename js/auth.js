@@ -44,45 +44,33 @@ const Auth = {
   /**
    * 注册新用户
    */
-  async signUp(email, password, username) {
-    // 使用 Supabase Auth 注册
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          username: username,  // 存到 raw_user_meta_data，trigger 会读取
-        },
-      },
+      async sendCode(email) {
+    const res = await fetch('/api/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
     });
-
-    if (error) {
-      // 翻译常见错误
-      if (error.message.includes('already registered')) {
-        throw new Error('该邮箱已被注册');
-      }
-      throw new Error(error.message);
-    }
-
-    // 自动确认邮箱（服务端通过 service_role key 完成）
-    if (data.user && !data.user.email_confirmed_at) {
-      try {
-        const res = await fetch('/api/confirm-user', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: data.user.id }),
-        });
-        if (!res.ok) {
-          console.warn('邮箱自动确认失败:', await res.text());
-        }
-      } catch (e) {
-        // API 不可用时静默失败，不影响注册流程
-        console.warn('邮箱自动确认接口不可用:', e.message);
-      }
-    }
-
-    return data;
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || '发送失败');
+    return result;
   },
+
+  async verifyAndSignUp(token, code, password, username) {
+    const res = await fetch('/api/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, code, password, username }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || '验证失败');
+    return result;
+  },
+
+  async signUp(email, password, username) {
+    throw new Error('请使用验证码注册');
+  },
+
+
 
   /**
    * 登录

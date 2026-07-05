@@ -8,6 +8,50 @@ const Settings = {
   showUserMgmt: false,
 
   /**
+   * 切换编辑名称
+   */
+  toggleEditName() {
+    const row = document.getElementById('editNameRow');
+    const input = document.getElementById('editNameInput');
+    const err = document.getElementById('editNameError');
+    if (row.classList.contains('open')) {
+      row.classList.remove('open');
+      err.style.display = 'none';
+      input.value = '';
+    } else {
+      input.value = Auth.currentUser?.username || '';
+      row.classList.add('open');
+      input.focus();
+    }
+  },
+
+  /**
+   * 保存新名称
+   */
+  async saveName() {
+    const input = document.getElementById('editNameInput');
+    const err = document.getElementById('editNameError');
+    const newName = input.value.trim();
+    if (!newName) { err.textContent = '名称不能为空'; err.style.display = 'block'; return; }
+    if (newName.length < 2) { err.textContent = '至少2个字符'; err.style.display = 'block'; return; }
+    try {
+      const { error } = await supabase
+        .from('user_roles')
+        .update({ username: newName })
+        .eq('id', Auth.currentUser.id);
+      if (error) throw error;
+      Auth.currentUser.username = newName;
+      document.getElementById('profileUsername').textContent = newName;
+      document.getElementById('headerUsername').textContent = newName;
+      this.toggleEditName();
+      Utils.showToast('✅ 名称已更新');
+    } catch (e) {
+      err.textContent = e.message || '保存失败';
+      err.style.display = 'block';
+    }
+  },
+
+  /**
    * 导出 CSV
    */
   exportCSV(orders) {
@@ -93,7 +137,12 @@ const Settings = {
       area.innerHTML = users.map(u => `
         <div class="user-list-item">
           <div class="user-list-left">
-            <span class="user-list-name">${Utils.escHtml(u.username)}</span>
+            <div class="user-list-avatar">${(u.username || '?')[0].toUpperCase()}</div>
+            <div class="user-list-info">
+              <span class="user-list-name">${Utils.escHtml(u.username)}</span>
+            </div>
+          </div>
+          <div class="user-list-role">
             <span class="tag ${u.role === 'admin' ? 'tag-cancel' : 'tag-video'}">${u.role === 'admin' ? '👑 管理员' : '👤 用户'}</span>
           </div>
           ${u.id !== Auth.currentUser?.id

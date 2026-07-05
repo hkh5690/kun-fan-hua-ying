@@ -41,8 +41,8 @@ const Utils = {
   },
 
   statusColor(status) {
-    const map = { '待付定金': '#ED8936', '进行中': '#2B579A', '待付尾款': '#E53E3E', '已完成': '#38A169', '已取消': '#999' };
-    return map[status] || '#999';
+    const map = { '待付定金': '#F59E0B', '进行中': '#3B82F6', '待付尾款': '#A855F7', '已完成': '#22C55E', '已取消': '#64748B' };
+    return map[status] || '#64748B';
   },
 
   isDeadlineUrgent(dateStr) {
@@ -85,5 +85,27 @@ const Utils = {
     a.click();
     URL.revokeObjectURL(a.href);
     Utils.showToast('📤 文件已下载: ' + filename);
+  },
+
+  // 滚动揭示
+  _revealObserver: null,
+  initScrollReveal() {
+    if (this._revealObserver) return;
+    this._revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          this._revealObserver.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+    document.querySelectorAll('.reveal').forEach(el => this._revealObserver.observe(el));
+    // 交错子元素
+    document.querySelectorAll('.reveal-stagger').forEach(container => {
+      [...container.children].forEach((child, i) => {
+        child.style.transitionDelay = (i * 60) + 'ms';
+        this._revealObserver.observe(child);
+      });
+    });
   },
 };

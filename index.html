@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#1A3C6E">
+<meta name="theme-color" content="#0B1929">
 <title>鲲繁花影 · 接单管理</title>
 
 <!-- Supabase JS SDK（通过本站 Cloudflare CDN 分发，国内可用） -->
@@ -24,42 +24,65 @@
      LOGIN / REGISTER PAGE
      ══════════════════════════════════════════ -->
 <div class="login-page" id="loginPage">
-  <div class="logo-area">
-    <div class="logo-icon">🌸</div>
-    <div class="logo-title">鲲繁花影</div>
-    <div class="logo-subtitle">接单管理系统</div>
+  <!-- 环境氛围光 -->
+  <div class="login-ambient"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
+  <!-- 左侧品牌区 -->
+  <div class="login-brand">
+    <div class="brand-icon">🌸</div>
+    <h1>鲲繁花影</h1>
+    <p class="brand-desc">简洁高效的接单管理系统，助力自由职业者轻松管理项目与订单。</p>
+    <div class="brand-features">
+      <div class="brand-feature"><span class="feat-dot"></span>订单全流程追踪</div>
+      <div class="brand-feature"><span class="feat-dot"></span>实时数据看板</div>
+      <div class="brand-feature"><span class="feat-dot"></span>团队协作管理</div>
+    </div>
   </div>
 
-  <div class="form-card">
-    <div class="mode-tabs">
-      <button class="mode-tab active" id="tabLogin" onclick="switchMode('login')">登录</button>
-      <button class="mode-tab" id="tabRegister" onclick="switchMode('register')">注册</button>
+  <!-- 右侧登录卡片 -->
+  <div class="login-wrapper">
+    <div class="form-card">
+      <div class="form-card-header">
+        <div class="card-avatar">🌸</div>
+        <h3 id="formTitle">欢迎回来</h3>
+        <p id="formSub">登录您的账号以继续</p>
+      </div>
+
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tabLogin" onclick="switchMode('login')">登 录</button>
+        <button class="mode-tab" id="tabRegister" onclick="switchMode('register')">注 册</button>
+      </div>
+
+      <div class="first-user-hint" id="firstUserHint" style="display:none;">
+        🎉 欢迎！首位注册用户将自动成为<strong style="color:#B45309;">管理员</strong>
+      </div>
+
+      <div class="input-group">
+        <span class="input-icon">✉️</span>
+        <input class="login-input" type="email" id="loginUsername" placeholder="邮箱地址" autocomplete="email">
+        <button class="btn btn-sm btn-outline" id="sendCodeBtn" style="display:none;white-space:nowrap;flex-shrink:0;" onclick="App.sendVerificationCode()" type="button">发送验证码</button>
+      </div>
+
+      <div class="input-group" id="verifyCodeGroup" style="display:none;">
+        <span class="input-icon">🔢</span>
+        <input class="login-input" type="text" id="loginVerifyCode" placeholder="请输入6位验证码" maxlength="6" autocomplete="off" inputmode="numeric">
+      </div>
+
+      <div class="input-group">
+        <span class="input-icon">🔑</span>
+        <input class="login-input" type="password" id="loginPassword" placeholder="密码（至少6位）" autocomplete="current-password">
+      </div>
+
+      <div class="input-group" id="confirmPwdGroup" style="display:none;">
+        <span class="input-icon">🔐</span>
+        <input class="login-input" type="password" id="loginConfirmPwd" placeholder="确认密码" autocomplete="off">
+      </div>
+
+      <div class="error-msg" id="loginError"></div>
+
+      <button class="submit-btn" id="submitBtn" onclick="App.handleLoginSubmit()">登 录</button>
+
+      <div class="switch-hint" id="switchHint" onclick="switchMode(null)">还没有账号？立即注册 →</div>
     </div>
-
-    <div class="first-user-hint" id="firstUserHint" style="display:none;">
-      🎉 欢迎！首位注册用户将自动成为<strong style="color:#E53E3E;">管理员</strong>
-    </div>
-
-    <div class="input-group">
-      <span class="input-icon">📧</span>
-      <input class="login-input" type="email" id="loginUsername" placeholder="请输入邮箱" autocomplete="email">
-    </div>
-
-    <div class="input-group">
-      <span class="input-icon">🔒</span>
-      <input class="login-input" type="password" id="loginPassword" placeholder="请输入密码（至少6位）" autocomplete="current-password">
-    </div>
-
-    <div class="input-group" id="confirmPwdGroup" style="display:none;">
-      <span class="input-icon">🔐</span>
-      <input class="login-input" type="password" id="loginConfirmPwd" placeholder="请再次输入密码" autocomplete="off">
-    </div>
-
-    <div class="error-msg" id="loginError"></div>
-
-    <button class="submit-btn" id="submitBtn" onclick="App.handleLoginSubmit()">登 录</button>
-
-    <div class="switch-hint" id="switchHint" onclick="switchMode(null)">还没有账号？点击注册</div>
   </div>
 </div>
 
@@ -68,66 +91,62 @@
      ══════════════════════════════════════════ -->
 <div class="app-container" id="appContainer">
 
-  <!-- Header -->
+  <!-- ════════════ 层级 1: Header ════════════ -->
   <header class="header">
     <div class="header-left">
-      <span>🌸</span>
-      <span class="header-logo">鲲繁花影</span>
+      <span class="header-logo"><span class="logo-icon">🌸</span><span class="logo-text">鲲繁花影</span></span>
+      <nav class="status-tabs" id="statusFilterTabs">
+        <button class="status-tab active" data-filter="all">全部</button>
+        <button class="status-tab" data-filter="待付定金">待付定金</button>
+        <button class="status-tab" data-filter="进行中">进行中</button>
+        <button class="status-tab" data-filter="待付尾款">待付尾款</button>
+        <button class="status-tab" data-filter="已完成">已完成</button>
+        <button class="status-tab" data-filter="已取消">已取消</button>
+      </nav>
     </div>
-    <nav class="nav-tabs">
-      <button class="nav-tab active" data-page="orders">📋 订单列表</button>
-      <button class="nav-tab" data-page="dashboard">📊 数据看板</button>
-      <button class="nav-tab" data-page="settings">⚙️ 设置</button>
-    </nav>
+    <div class="header-center">
+      <span class="page-title">📋 订单列表</span>
+    </div>
     <div class="header-right">
-      <button class="user-badge" onclick="App.switchPage('settings')" title="查看个人信息">
-        <span class="role-dot" id="roleDot"></span>
-        <span id="headerUsername">--</span>
-      </button>
+      <span class="header-revenue" id="headerRevenue">💰 ¥0</span>
+      <button class="header-btn" onclick="App.switchPage('dashboard')" title="数据看板">📊</button>
+      <button class="header-btn" onclick="App.switchPage('settings')" title="设置">⚙️</button>
+      <div class="header-user" onclick="App.switchPage('settings')" title="查看个人信息">
+        <div class="user-avatar" id="headerAvatar">🌸</div>
+        <span class="user-name" id="headerUsername">--</span>
+      </div>
+      <button class="header-btn" title="通知">🔔</button>
     </div>
   </header>
+
+  <!-- ════════════ 层级 2: Toolbar ════════════ -->
+  <div class="toolbar" id="mainToolbar">
+    <input type="text" class="search-box" id="searchInput" placeholder="搜索客户、标题、订单编号...">
+    <button class="btn btn-primary" onclick="App.openModal()">+ 新建订单</button>
+  </div>
 
   <div class="container">
 
     <!-- ════════════ PAGE 1: 订单列表 ════════════ -->
     <div class="page active" id="page-orders">
       <div class="stats-row" id="statsRow"></div>
-
-      <div class="toolbar">
-        <input type="text" class="search-box" id="searchInput" placeholder="🔍 搜索客户名、标题、描述...">
-        <select class="filter-select" id="filterStatus">
-          <option value="">全部状态</option>
-          <option value="待付定金">待付定金</option>
-          <option value="进行中">进行中</option>
-          <option value="待付尾款">待付尾款</option>
-          <option value="已完成">已完成</option>
-          <option value="已取消">已取消</option>
-        </select>
-        <select class="filter-select" id="filterType">
-          <option value="">全部类型</option>
-          <option value="视频剪辑">视频剪辑</option>
-          <option value="PPT制作">PPT制作</option>
-          <option value="朗诵背景视频">朗诵背景视频</option>
-          <option value="网页制作">网页制作</option>
-          <option value="其他">其他</option>
-        </select>
-        <select class="filter-select" id="sortBy">
-          <option value="-created_at">最新优先</option>
-          <option value="created_at">最早优先</option>
-          <option value="-total_price">金额高→低</option>
-          <option value="total_price">金额低→高</option>
-          <option value="deadline">截止日期</option>
-        </select>
+      <div class="content-area">
+        <div class="inner">
+          <!-- 层级 3: 订单表格 -->
+          <div class="order-table-wrap" id="orderTableWrap"></div>
+          <!-- 层级 3: 空状态 -->
+          <div class="empty-state" id="emptyState" style="display:none;">
+            <div class="empty-card">
+              <div class="empty-icon">📦</div>
+              <h3>还没有订单</h3>
+              <p>创建第一个订单，开始管理你的接单记录</p>
+              <button class="btn btn-primary btn-lg" onclick="App.openModal()">+ 创建订单</button>
+            </div>
+          </div>
+          <!-- 详情面板 -->
+          <div class="detail-panel" id="detailPanel"></div>
+        </div>
       </div>
-
-      <div class="order-list" id="orderList"></div>
-      <div class="empty-state" id="emptyState" style="display:none;">
-        <div class="icon">📭</div>
-        <p>还没有订单记录</p>
-        <p style="font-size:12px;margin-top:4px;color:#A0AEC0;">点击右下角 + 按钮创建第一单</p>
-      </div>
-
-      <div class="detail-panel" id="detailPanel"></div>
     </div>
 
     <!-- ════════════ PAGE 2: 数据看板 ════════════ -->
@@ -138,17 +157,30 @@
     <!-- ════════════ PAGE 3: 设置 ════════════ -->
     <div class="page" id="page-settings">
       <!-- 用户信息 -->
-      <div class="settings-card user-profile-card">
-        <div class="user-avatar-big">👤</div>
-        <div>
-          <div style="font-size:18px;font-weight:700;" id="profileUsername">--</div>
-          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">
-            <span class="tag" id="profileRoleTag">--</span>
+      <div class="user-profile-card">
+        <div class="user-avatar-big" id="profileAvatar">🌸</div>
+        <div class="user-profile-info">
+          <div class="user-profile-name">
+            <span id="profileUsername">--</span>
+            <button class="btn btn-ghost btn-sm" onclick="Settings.toggleEditName()" title="修改名称">✏️</button>
+          </div>
+          <div class="user-profile-email">
+            <span class="email-icon">📧</span> <span id="profileEmail">--</span>
+          </div>
+          <div class="user-profile-row">
+            <span class="role-badge" id="profileRoleTag">--</span>
+            <span style="font-size:11px;color:var(--text-muted);" id="profileUserId"></span>
+          </div>
+          <div class="inline-edit" id="editNameRow">
+            <input type="text" id="editNameInput" placeholder="输入新名称" maxlength="30">
+            <button class="btn btn-primary btn-sm" onclick="Settings.saveName()">保存</button>
+            <button class="btn btn-ghost btn-sm" onclick="Settings.toggleEditName()">取消</button>
+            <span style="font-size:11px;color:var(--danger);display:none;" id="editNameError"></span>
           </div>
         </div>
       </div>
 
-      <button class="btn btn-danger logout-btn" onclick="App.logout()" style="justify-content:center;">🚪 退出登录</button>
+      <button class="btn btn-danger" onclick="App.logout()" style="width:100%;justify-content:center;margin-bottom:24px;">🚪 退出登录</button>
 
       <!-- 管理员功能区 -->
       <div id="adminSection" style="display:none;">
@@ -165,7 +197,7 @@
 
         <div class="settings-card">
           <h3>📥 导入备份</h3>
-          <p>从之前导出的 JSON 备份文件恢复数据。<strong style="color:#E53E3E;">注意：会覆盖当前全部数据。</strong></p>
+          <p>从之前导出的 JSON 备份文件恢复数据。<strong style="color:var(--danger);">注意：会覆盖当前全部数据。</strong></p>
           <button class="btn btn-outline" id="toggleImportBtn" onclick="Settings.toggleImport()">粘贴 JSON 文本导入</button>
           <div id="importArea" style="display:none;">
             <textarea class="import-textarea" id="importText" placeholder="请在此粘贴 JSON 备份内容..."></textarea>
@@ -195,7 +227,7 @@
     </div>
   </div>
 
-  <!-- FAB -->
+  <!-- ════════════ 层级 4: FAB ════════════ -->
   <button class="fab" id="fabBtn" title="新增订单" onclick="App.openModal()">+</button>
 </div>
 
@@ -275,7 +307,7 @@
         <div class="form-row">
           <div class="form-group">
             <label>待付尾款 (¥)</label>
-            <input type="number" id="fBalance" placeholder="自动计算" step="0.01" readonly style="background:#F7FAFC;">
+            <input type="number" id="fBalance" placeholder="自动计算" step="0.01" readonly>
           </div>
           <div class="form-group">
             <label>截止日期</label>
@@ -334,8 +366,12 @@ function switchMode(mode) {
   document.getElementById('tabLogin').classList.toggle('active', loginMode === 'login');
   document.getElementById('tabRegister').classList.toggle('active', loginMode === 'register');
   document.getElementById('submitBtn').textContent = loginMode === 'login' ? '登 录' : '注 册';
-  document.getElementById('switchHint').textContent = loginMode === 'login' ? '还没有账号？点击注册' : '已有账号？点击登录';
+  document.getElementById('switchHint').textContent = loginMode === 'login' ? '还没有账号？立即注册 →' : '已有账号？去登录 →';
+  document.getElementById('formTitle').textContent = loginMode === 'login' ? '欢迎回来' : '创建账号';
+  document.getElementById('formSub').textContent = loginMode === 'login' ? '登录您的账号以继续' : '注册一个新账号开始使用';
   document.getElementById('confirmPwdGroup').style.display = loginMode === 'register' ? 'flex' : 'none';
+  document.getElementById('sendCodeBtn').style.display = loginMode === 'register' ? 'flex' : 'none';
+  document.getElementById('verifyCodeGroup').style.display = loginMode === 'register' ? 'flex' : 'none';
   document.getElementById('loginError').textContent = '';
 }
 

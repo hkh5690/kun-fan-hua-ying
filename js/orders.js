@@ -208,16 +208,14 @@ const Orders = {
    * 删除用户（仅 admin）
    */
   async deleteUser(userId) {
-    // 需要通过 Admin API 或 Supabase 的 auth admin 功能
-    // 这里先从 user_roles 中删除，实际账户需要用 Supabase Dashboard 或 Edge Function
-    const { error } = await supabase
-      .from('user_roles')
-      .delete()
-      .eq('id', userId);
-
-    if (error) {
-      console.error('删除用户失败:', error);
-      throw new Error('删除用户失败: ' + error.message);
+    const res = await fetch('/api/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      throw new Error(result.error || '删除失败');
     }
   },
 };
