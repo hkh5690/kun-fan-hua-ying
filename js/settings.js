@@ -186,8 +186,8 @@ const Settings = {
       } catch (e) {
         Utils.showToast('❌ ' + e.message);
       }
+      if (selectEl) selectEl.value = '';
     });
-    if (selectEl) selectEl.value = '';
   },
 
   /**
@@ -256,10 +256,10 @@ const Settings = {
       const now = new Date();
       const todayStr = now.toISOString().slice(0, 10);
       const demoData = [
-        { orderNumber: '', producer: '小光', orderDate: todayStr, customer: '小明同学', contact: '微信 xm_2024', serviceType: '朗诵背景视频', title: '朗诵《再别康桥》背景视频', description: '3分钟左右，水墨江南风格，配钢琴曲《致爱丽丝》，需要字幕同步', totalPrice: 120, deposit: 60, balance: 60, status: '进行中', deadline: new Date(now.getTime() + 3 * 86400000).toISOString().slice(0, 10) },
-        { orderNumber: '', producer: '小光', orderDate: todayStr, customer: '李经理', contact: '旺旺联系', serviceType: 'PPT制作', title: 'Q2工作汇报PPT', description: '15页左右，科技风，蓝色主色调，需要图表美化和动画效果', totalPrice: 600, deposit: 300, balance: 300, status: '待付定金', deadline: new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10) },
-        { orderNumber: '', producer: '微光', orderDate: todayStr, customer: '小红薯666', contact: '微信 red_668', serviceType: '视频剪辑', title: '生日派对Vlog', description: '3-5分钟混剪，素材约50个片段，要卡点配乐欢快风格', totalPrice: 150, deposit: 150, balance: 0, status: '已完成', deadline: '' },
-        { orderNumber: '', producer: '微光', orderDate: todayStr, customer: '张老师', contact: '138xxxx8888', serviceType: '视频剪辑', title: '学校活动宣传片', description: '校庆活动回顾，多素材整合，3分钟，大气风', totalPrice: 350, deposit: 175, balance: 175, status: '待付尾款', deadline: new Date(now.getTime() + 1 * 86400000).toISOString().slice(0, 10) },
+        { orderNumber: Utils.genOrderNumber([]), producer: '小光', orderDate: todayStr, customer: '小明同学', contact: '微信 xm_2024', serviceType: '朗诵背景视频', title: '朗诵《再别康桥》背景视频', description: '3分钟左右，水墨江南风格，配钢琴曲《致爱丽丝》，需要字幕同步', totalPrice: 120, deposit: 60, balance: 60, status: '进行中', deadline: new Date(now.getTime() + 3 * 86400000).toISOString().slice(0, 10) },
+        { orderNumber: Utils.genOrderNumber([]), producer: '小光', orderDate: todayStr, customer: '李经理', contact: '旺旺联系', serviceType: 'PPT制作', title: 'Q2工作汇报PPT', description: '15页左右，科技风，蓝色主色调，需要图表美化和动画效果', totalPrice: 600, deposit: 300, balance: 300, status: '待付定金', deadline: new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10) },
+        { orderNumber: Utils.genOrderNumber([]), producer: '微光', orderDate: todayStr, customer: '小红薯666', contact: '微信 red_668', serviceType: '视频剪辑', title: '生日派对Vlog', description: '3-5分钟混剪，素材约50个片段，要卡点配乐欢快风格', totalPrice: 150, deposit: 150, balance: 0, status: '已完成', deadline: '' },
+        { orderNumber: Utils.genOrderNumber([]), producer: '微光', orderDate: todayStr, customer: '张老师', contact: '138xxxx8888', serviceType: '视频剪辑', title: '学校活动宣传片', description: '校庆活动回顾，多素材整合，3分钟，大气风', totalPrice: 350, deposit: 175, balance: 175, status: '待付尾款', deadline: new Date(now.getTime() + 1 * 86400000).toISOString().slice(0, 10) },
       ];
 
       await Orders.clearAll();

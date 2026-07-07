@@ -39,15 +39,7 @@ module.exports = async (req, res) => {
     const { data, error } = await supabase.from('user_roles').select('id,username,role,approved,created_at');
     if (error) return res.status(500).json({ error: error.message });
 
-    const fixes = [];
-    for (const u of data) {
-      if (u.role === 'user') {
-        const { error: e2 } = await supabase.from('user_roles').update({ role: 'editor' }).eq('id', u.id);
-        fixes.push({ id: u.id, username: u.username, success: !e2, error: e2 ? (e2.message || JSON.stringify(e2)) : null });
-      }
-    }
-
-    return res.status(200).json({ users: data, fixes });
+    return res.status(200).json({ users: data });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

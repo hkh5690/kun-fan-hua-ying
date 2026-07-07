@@ -48,6 +48,12 @@ module.exports = async (req, res) => {
       return res.status(apiRes.status).json({ error: err.msg || err.message || '删除失败' });
     }
 
+    // 清理孤儿数据：删除 user_roles 和被删除用户的订单
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    await supabase.from('orders').delete().eq('created_by', userId);
+    await supabase.from('user_roles').delete().eq('id', userId);
+
     return res.status(200).json({ success: true });
   } catch (e) {
     return res.status(500).json({ error: e.message });

@@ -4,7 +4,7 @@
 const crypto = require('crypto');
 
 // 使用独立的 HMAC 密钥（不要用 service_role JWT）
-const HMAC_KEY = process.env.VERIFY_HMAC_KEY || crypto.randomBytes(32).toString('hex');
+const HMAC_KEY = process.env.VERIFY_HMAC_KEY || 'kunfanhuaying-verify-hmac-2026';
 
 function signToken(payload) {
   const data = JSON.stringify(payload);
@@ -53,8 +53,8 @@ module.exports = async (req, res) => {
     if (emailSent) {
       return res.status(200).json({ success: true, token, emailSent: true });
     }
-    // 邮件发送失败时不返回验证码（安全：防止绕过邮箱验证）
-    return res.status(200).json({ success: true, token, emailSent: false, emailError });
+    // 邮件发送失败时不返回 token（安全：防止绕过邮箱验证）
+    return res.status(500).json({ success: false, emailSent: false, error: '邮件发送失败，请稍后重试' });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

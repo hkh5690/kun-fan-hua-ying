@@ -68,12 +68,6 @@ const App = {
         if (!item) return;
         this.selectEditor(item.dataset.id, item.textContent);
       });
-      editorDropdown.addEventListener('touchend', (e) => {
-        const item = e.target.closest('.dropdown-item');
-        if (!item) return;
-        e.preventDefault();
-        this.selectEditor(item.dataset.id, item.textContent);
-      });
     }
 
     // Header 状态筛选标签
@@ -366,7 +360,7 @@ const App = {
     let filtered = this.orders.filter(o => {
       if (statusFilter !== 'all' && o.status !== statusFilter) return false;
       if (search) {
-        const haystack = (o.customer + ' ' + o.title + ' ' + (o.order_number || '') + ' ' + (o.description || '') + ' ' + (o.producer || '') + ' ' + (o.contact || '') + ' ' + (o.service_type || '')).toLowerCase();
+        const haystack = ((o.customer||'') + ' ' + (o.title||'') + ' ' + (o.order_number || '') + ' ' + (o.description || '') + ' ' + (o.producer || '') + ' ' + (o.contact || '') + ' ' + (o.service_type || '')).toLowerCase();
         if (!haystack.includes(search)) return false;
       }
       return true;
@@ -487,7 +481,8 @@ const App = {
       document.getElementById('selectedEditorName').textContent = assignedName;
       document.getElementById('selectedEditor').style.display = 'flex';
       // 隐藏取消分配按钮（只读模式）
-      document.querySelector('#selectedEditor .btn-unassign').style.display = 'none';
+      const ubtn = document.querySelector('#selectedEditor .btn-unassign');
+      if (ubtn) ubtn.style.display = 'none';
     } else if (Auth.isAdmin() || Auth.isCS()) {
       assignCard.style.display = 'block';
       document.getElementById('editorSearchInput').style.display = 'block';
