@@ -2,9 +2,8 @@
  * /api/send-code — send verification code via email (Resend)
  */
 const crypto = require('crypto');
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG91Z3ltdHNwcW11anJvbHdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk5NzQzOCwiZXhwIjoyMDk4NTczNDM4fQ.hywUEdWq1IxRxfN1SUtYXgHrke3K3YJ-dKljFcNRrn4';
 
-// 使用专门的 HMAC 密钥，不要用 service_role JWT
+// 使用独立的 HMAC 密钥（不要用 service_role JWT）
 const HMAC_KEY = process.env.VERIFY_HMAC_KEY || crypto.randomBytes(32).toString('hex');
 
 function signToken(payload) {
@@ -38,10 +37,7 @@ module.exports = async (req, res) => {
       } else {
         const emailRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + RESEND_KEY,
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Authorization': 'Bearer ' + RESEND_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             from: 'noreply@kunfanhuaying.click',
             to: [email],
@@ -57,7 +53,7 @@ module.exports = async (req, res) => {
     if (emailSent) {
       return res.status(200).json({ success: true, token, emailSent: true });
     }
-    // 邮件发送失败时不返回验证码（安全性：防止绕过邮箱验证）
+    // 邮件发送失败时不返回验证码（安全：防止绕过邮箱验证）
     return res.status(200).json({ success: true, token, emailSent: false, emailError });
   } catch (e) {
     return res.status(500).json({ error: e.message });

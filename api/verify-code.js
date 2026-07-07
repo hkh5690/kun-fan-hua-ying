@@ -27,25 +27,17 @@ module.exports = async (req, res) => {
     const { token, code, password, username, role } = req.body || {};
     if (!token || !code || !password) return res.status(400).json({ error: '缺少参数' });
 
-    // 验证 token
     const payload = verifyToken(token);
     if (!payload) return res.status(400).json({ error: '验证码已过期或无效，请重新获取' });
     if (payload.code !== code) return res.status(400).json({ error: '验证码错误' });
     if (Date.now() > payload.exp) return res.status(400).json({ error: '验证码已过期，请重新获取' });
     if (password.length < 6) return res.status(400).json({ error: '密码至少6位' });
 
-    // 创建用户
     const apiRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
       method: 'POST',
-      headers: {
-        'apikey': SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'apikey': SERVICE_ROLE_KEY, 'Authorization': `Bearer ${SERVICE_ROLE_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: payload.email,
-        password,
-        email_confirm: true,
+        email: payload.email, password, email_confirm: true,
         user_metadata: { username: username || payload.email.split('@')[0], role: role || 'editor' },
       }),
     });
@@ -53,9 +45,7 @@ module.exports = async (req, res) => {
     const data = await apiRes.json();
     if (!apiRes.ok) {
       const msg = data.msg || data.message || '注册失败';
-      if (msg.includes('already') || msg.includes('already exists')) {
-        return res.status(409).json({ error: '该邮箱已被注册' });
-      }
+      if (msg.includes('already') || msg.includes('already exists')) return res.status(409).json({ error: '该邮箱已被注册' });
       return res.status(apiRes.status).json({ error: msg });
     }
 

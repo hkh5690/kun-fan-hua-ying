@@ -1,10 +1,28 @@
 /**
  * /api/run-sql — 执行数据库迁移（仅管理员可用）
  */
-const { requireAdmin } = require('./_auth');
 const { Pool } = require('pg');
-
+const SUPABASE_URL = 'https://bnlougymtspqmujrolwh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG91Z3ltdHNwcW11anJvbHdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTc0MzgsImV4cCI6MjA5ODU3MzQzOH0._ArFEkE3aVWEkPJnD28r71rJwq3JBq70AW5kHltQW7o';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG91Z3ltdHNwcW11anJvbHdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk5NzQzOCwiZXhwIjoyMDk4NTczNDM4fQ.hywUEdWq1IxRxfN1SUtYXgHrke3K3YJ-dKljFcNRrn4';
 const DB_PASSWORD = process.env.SUPABASE_DB_PASSWORD || '';
+
+async function checkAdmin(req) {
+  const token = (req.headers.authorization || '').replace('Bearer ', '');
+  if (!token) return null;
+  try {
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
+    });
+    if (!userRes.ok) return null;
+    const user = await userRes.json();
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const { data: roleData } = await supabase.from('user_roles').select('role').eq('id', user.id).single();
+    if (!roleData || roleData.role !== 'admin') return null;
+    return user.id;
+  } catch { return null; }
+}
 
 const CONFIGS = [
   { host: 'db.bnlougymtspqmujrolwh.supabase.co', port: 5432, user: 'postgres', label: 'direct' },
@@ -12,13 +30,7 @@ const CONFIGS = [
 ];
 
 async function tryConnect(config) {
-  const pool = new Pool({
-    ...config,
-    database: 'postgres',
-    password: DB_PASSWORD,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 5000,
-  });
+  const pool = new Pool({ ...config, database: 'postgres', password: DB_PASSWORD, ssl: { rejectUnauthorized: false }, connectionTimeoutMillis: 5000 });
   try {
     const client = await pool.connect();
     return { client, pool, ok: true };
@@ -36,28 +48,17 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // 认证检查：仅管理员可执行 SQL
-  const auth = await requireAdmin(req);
-  if (!auth.authorized) return res.status(401).json({ error: auth.error });
+  const adminId = await checkAdmin(req);
+  if (!adminId) return res.status(401).json({ error: '未登录或权限不足' });
 
   const { sql } = req.body || {};
   if (!sql) return res.status(400).json({ error: 'sql required' });
+  if (!DB_PASSWORD) return res.status(500).json({ error: 'SUPABASE_DB_PASSWORD 环境变量未设置' });
 
-  if (!DB_PASSWORD) {
-    return res.status(500).json({ error: 'SUPABASE_DB_PASSWORD 环境变量未设置。请在 Supabase Dashboard → Settings → Database → Connection Pooling 获取密码，并在 Vercel 环境变量中设置。' });
-  }
-
-  // 禁止危险操作
+  // 安全限制：禁止危险操作
   const upperSql = sql.toUpperCase();
-  const dangerousOps = ['DROP ', 'TRUNCATE', 'DELETE FROM', 'ALTER TABLE'];
-  for (const op of dangerousOps) {
-    if (upperSql.includes(op)) {
-      // 只允许特定的 ALTER TABLE（如 setup.sql 中的）
-      if (op === 'ALTER TABLE' && (upperSql.includes('ADD COLUMN') || upperSql.includes('DROP CONSTRAINT') || upperSql.includes('ADD CONSTRAINT'))) {
-        continue;
-      }
-      return res.status(403).json({ error: `禁止执行 ${op} 操作。如有需要请直接在 Supabase SQL Editor 中执行。` });
-    }
+  for (const op of ['DROP ', 'TRUNCATE', 'DELETE FROM']) {
+    if (upperSql.includes(op)) return res.status(403).json({ error: `禁止执行 ${op.trim()} 操作` });
   }
 
   let conn = null;
@@ -65,17 +66,10 @@ module.exports = async (req, res) => {
     const result = await tryConnect(cfg);
     if (result.ok) { conn = result; break; }
   }
-
-  if (!conn) {
-    return res.status(500).json({ error: 'All connection attempts failed. 请确认 SUPABASE_DB_PASSWORD 环境变量已正确设置。' });
-  }
+  if (!conn) return res.status(500).json({ error: '数据库连接失败，请确认 SUPABASE_DB_PASSWORD 已设置' });
 
   try {
-    const statements = sql
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith('--'));
-
+    const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
     const results = [];
     for (const stmt of statements) {
       try {
@@ -89,16 +83,12 @@ module.exports = async (req, res) => {
         }
       }
     }
-
     conn.client.release();
     await conn.pool.end();
 
     const errors = results.filter(r => !r.ok);
     return res.status(errors.length ? 500 : 200).json({
-      success: errors.length === 0,
-      total: results.length,
-      errors: errors.length,
-      failed: errors.map(e => e.error),
+      success: errors.length === 0, total: results.length, errors: errors.length, failed: errors.map(e => e.error),
     });
   } catch (e) {
     try { conn.client.release(); await conn.pool.end(); } catch {}

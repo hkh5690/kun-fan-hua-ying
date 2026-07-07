@@ -1,8 +1,26 @@
 /**
  * /api/list-users — 管理员查看用户列表
  */
-const { requireAdmin, SERVICE_ROLE_KEY } = require('./_auth');
 const SUPABASE_URL = 'https://bnlougymtspqmujrolwh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG91Z3ltdHNwcW11anJvbHdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5OTc0MzgsImV4cCI6MjA5ODU3MzQzOH0._ArFEkE3aVWEkPJnD28r71rJwq3JBq70AW5kHltQW7o';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG91Z3ltdHNwcW11anJvbHdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk5NzQzOCwiZXhwIjoyMDk4NTczNDM4fQ.hywUEdWq1IxRxfN1SUtYXgHrke3K3YJ-dKljFcNRrn4';
+
+async function checkAdmin(req) {
+  const token = (req.headers.authorization || '').replace('Bearer ', '');
+  if (!token) return null;
+  try {
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` }
+    });
+    if (!userRes.ok) return null;
+    const user = await userRes.json();
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+    const { data: roleData } = await supabase.from('user_roles').select('role').eq('id', user.id).single();
+    if (!roleData || roleData.role !== 'admin') return null;
+    return user.id;
+  } catch { return null; }
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,28 +29,21 @@ module.exports = async (req, res) => {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // 认证检查：仅管理员可查看
-  const auth = await requireAdmin(req);
-  if (!auth.authorized) return res.status(401).json({ error: auth.error });
+  const adminId = await checkAdmin(req);
+  if (!adminId) return res.status(401).json({ error: '未登录或权限不足' });
 
   try {
     const { createClient } = require('@supabase/supabase-js');
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // 列出所有用户
     const { data, error } = await supabase.from('user_roles').select('id,username,role,approved,created_at');
     if (error) return res.status(500).json({ error: error.message });
 
-    // 修复旧数据中 role='user' 的用户
     const fixes = [];
     for (const u of data) {
       if (u.role === 'user') {
         const { error: e2 } = await supabase.from('user_roles').update({ role: 'editor' }).eq('id', u.id);
-        fixes.push({
-          id: u.id, username: u.username,
-          success: !e2,
-          error: e2 ? (e2.message || e2.code || JSON.stringify(e2)) : null,
-        });
+        fixes.push({ id: u.id, username: u.username, success: !e2, error: e2 ? (e2.message || JSON.stringify(e2)) : null });
       }
     }
 
