@@ -196,14 +196,17 @@ const App = {
         sel.innerHTML = '<option value="">不分配</option>' +
           (users || []).map(u => `<option value="${u.id}">${Utils.escHtml(u.username)}</option>`).join('');
       }
-    } catch {}
+    } catch (e) { console.error('加载剪辑列表失败:', e); }
   },
 
   /**
    * 更新 Header 中的总收入
    */
   renderRevenue() {
-    const total = this.orders.reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0);
+    // 只统计非取消订单的收入
+    const total = this.orders
+      .filter(o => o.status !== '已取消')
+      .reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0);
     document.getElementById('headerRevenue').textContent = '💰 ¥' + total.toLocaleString('zh-CN');
   },
 
@@ -256,7 +259,7 @@ const App = {
     let filtered = this.orders.filter(o => {
       if (statusFilter !== 'all' && o.status !== statusFilter) return false;
       if (search) {
-        const haystack = (o.customer + ' ' + o.title + ' ' + (o.order_number || '') + ' ' + (o.description || '')).toLowerCase();
+        const haystack = (o.customer + ' ' + o.title + ' ' + (o.order_number || '') + ' ' + (o.description || '') + ' ' + (o.producer || '') + ' ' + (o.contact || '') + ' ' + (o.service_type || '')).toLowerCase();
         if (!haystack.includes(search)) return false;
       }
       return true;
@@ -339,7 +342,7 @@ const App = {
       try {
         const { data: users } = await supabase.from('user_roles').select('username').eq('id', o.assigned_to).single();
         if (users) assignedName = users.username;
-      } catch {}
+      } catch (e) { /* 忽略查找错误 */ }
     }
 
     // 用模态框展示详情
@@ -641,10 +644,9 @@ const App = {
       window._verifyToken = result.token;
       if (result.emailSent) {
         Utils.showToast('📧 验证码已发送到 ' + email + '，如未收到请检查垃圾箱');
-      } else if (result.code) {
-        Utils.showToast('📧 验证码: ' + result.code);
       } else {
-        Utils.showToast('📧 验证码已发送到 ' + email + '，如未收到请检查垃圾箱');
+        Utils.showToast('⚠️ 邮件发送失败，请稍后重试');
+        console.error('Send code error:', result.emailError);
       }
     }).catch(e => {
       errEl.textContent = e.message;

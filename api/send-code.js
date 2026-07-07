@@ -2,11 +2,14 @@
  * /api/send-code — send verification code via email (Resend)
  */
 const crypto = require('crypto');
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG91Z3ltdHNwcW11anJvbHdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk5NzQzOCwiZXhwIjoyMDk4NTczNDM4fQ.hywUEdWq1IxRxfN1SUtYXgHrke3K3YJ-dKljFcNRrn4';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG91Z3ltdHNwcW11anJvbHdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk5NzQzOCwiZXhwIjoyMDk4NTczNDM4fQ.hywUEdWq1IxRxfN1SUtYXgHrke3K3YJ-dKljFcNRrn4';
+
+// 使用专门的 HMAC 密钥，不要用 service_role JWT
+const HMAC_KEY = process.env.VERIFY_HMAC_KEY || crypto.randomBytes(32).toString('hex');
 
 function signToken(payload) {
   const data = JSON.stringify(payload);
-  const hmac = crypto.createHmac('sha256', SERVICE_ROLE_KEY).update(data).digest('hex');
+  const hmac = crypto.createHmac('sha256', HMAC_KEY).update(data).digest('hex');
   return Buffer.from(JSON.stringify({ data, hmac })).toString('base64url');
 }
 
@@ -30,27 +33,32 @@ module.exports = async (req, res) => {
 
     try {
       const RESEND_KEY = process.env.RESEND_API_KEY || '';
-      const emailRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': 'Bearer ' + RESEND_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'noreply@kunfanhuaying.click',
-          to: [email],
-          subject: '鲲繁花影 - 邮箱验证码',
-          html: '<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px"><h2 style="color:#2B579A">🌸 鲲繁花影</h2><p>您的验证码是：</p><div style="font-size:32px;font-weight:700;letter-spacing:8px;color:#1A3C6E;padding:20px;background:#F1F5F9;border-radius:12px;text-align:center;margin:16px 0">' + code + '</div><p style="color:#64748B;font-size:13px">5分钟内有效，请勿泄露给他人。</p></div>',
-        }),
-      });
-      emailSent = emailRes.ok;
-      if (!emailSent) { const b = await emailRes.text(); emailError = b.substring(0, 200); }
+      if (!RESEND_KEY) {
+        emailError = 'RESEND_API_KEY 未配置';
+      } else {
+        const emailRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + RESEND_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'noreply@kunfanhuaying.click',
+            to: [email],
+            subject: '鲲繁花影 - 邮箱验证码',
+            html: '<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px"><h2 style="color:#2B579A">🌸 鲲繁花影</h2><p>您的验证码是：</p><div style="font-size:32px;font-weight:700;letter-spacing:8px;color:#1A3C6E;padding:20px;background:#F1F5F9;border-radius:12px;text-align:center;margin:16px 0">' + code + '</div><p style="color:#64748B;font-size:13px">5分钟内有效，请勿泄露给他人。</p></div>',
+          }),
+        });
+        emailSent = emailRes.ok;
+        if (!emailSent) { const b = await emailRes.text(); emailError = b.substring(0, 200); }
+      }
     } catch (e) { emailError = e.message; }
 
     if (emailSent) {
       return res.status(200).json({ success: true, token, emailSent: true });
     }
-    return res.status(200).json({ success: true, token, code, emailSent: false, emailError });
+    // 邮件发送失败时不返回验证码（安全性：防止绕过邮箱验证）
+    return res.status(200).json({ success: true, token, emailSent: false, emailError });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

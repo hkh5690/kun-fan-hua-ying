@@ -53,10 +53,18 @@ const Utils = {
     return diff > 0 && diff < 2 * 24 * 3600 * 1000;
   },
 
+  /**
+   * HTML 转义（防止 XSS）
+   * 同时转义标签字符和引号，安全用于 HTML 属性和文本内容
+   */
   escHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s || '';
-    return d.innerHTML;
+    if (!s) return '';
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   },
 
   showToast(msg) {
@@ -107,5 +115,17 @@ const Utils = {
         this._revealObserver.observe(child);
       });
     });
+  },
+
+  /**
+   * 获取当前 Supabase 访问令牌（供 API 调用时使用）
+   */
+  async getAccessToken() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token || null;
+    } catch {
+      return null;
+    }
   },
 };

@@ -3,13 +3,14 @@
  */
 const crypto = require('crypto');
 const SUPABASE_URL = 'https://bnlougymtspqmujrolwh.supabase.co';
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG91Z3ltdHNwcW11anJvbHdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk5NzQzOCwiZXhwIjoyMDk4NTczNDM4fQ.hywUEdWq1IxRxfN1SUtYXgHrke3K3YJ-dKljFcNRrn4';
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG91Z3ltdHNwcW11anJvbHdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk5NzQzOCwiZXhwIjoyMDk4NTczNDM4fQ.hywUEdWq1IxRxfN1SUtYXgHrke3K3YJ-dKljFcNRrn4';
+const HMAC_KEY = process.env.VERIFY_HMAC_KEY || crypto.randomBytes(32).toString('hex');
 
 function verifyToken(token) {
   try {
     const raw = JSON.parse(Buffer.from(token, 'base64url').toString());
     const { data, hmac } = raw;
-    const expected = crypto.createHmac('sha256', SERVICE_ROLE_KEY).update(data).digest('hex');
+    const expected = crypto.createHmac('sha256', HMAC_KEY).update(data).digest('hex');
     if (hmac !== expected) return null;
     return JSON.parse(data);
   } catch { return null; }

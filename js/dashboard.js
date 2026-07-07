@@ -37,7 +37,9 @@ const Dashboard = {
       monthlyRevenue.push({ month: key, amount: 0 });
     }
     visible.filter(o => o.status !== '已取消').forEach(o => {
+      if (!o.order_date) return;
       const d = new Date(o.order_date);
+      if (isNaN(d.getTime())) return;
       const key = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
       const entry = monthlyRevenue.find(m => m.month === key);
       if (entry) entry.amount += (parseFloat(o.total_price) || 0);

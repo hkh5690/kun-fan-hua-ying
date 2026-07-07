@@ -173,9 +173,10 @@ const Settings = {
     const labels = { admin: '👑 管理员', cs: '💼 客服', editor: '✂️ 剪辑' };
     Utils.showConfirm(`将用户角色切换为 ${labels[role]}？`, async () => {
       try {
+        const token = await Utils.getAccessToken();
         const res = await fetch('/api/change-role', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
           body: JSON.stringify({ userId, role }),
         });
         const data = await res.json();
@@ -194,9 +195,10 @@ const Settings = {
    */
   async approveUser(userId) {
     try {
+      const token = await Utils.getAccessToken();
       const res = await fetch('/api/change-role', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
         body: JSON.stringify({ userId, approved: true }),
       });
       const data = await res.json();

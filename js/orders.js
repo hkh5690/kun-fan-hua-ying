@@ -168,7 +168,7 @@ const Orders = {
     if (!user) throw new Error('请先登录');
 
     const records = ordersArray.map(o => ({
-      id: o.id || genId(),
+      id: o.id || Utils.genId(),
       order_number: o.orderNumber || '',
       producer: o.producer || '',
       order_date: o.orderDate || new Date().toISOString().slice(0, 10),
@@ -183,6 +183,8 @@ const Orders = {
       status: o.status || '待付定金',
       deadline: o.deadline || '',
       created_by: user.id,
+      assigned_to: o.assignedTo || o.assigned_to || null,
+      editor_price: o.editorPrice || o.editor_price || 0,
     }));
 
     const { error } = await supabase.from('orders').insert(records);
@@ -216,9 +218,10 @@ const Orders = {
    * 删除用户（仅 admin）
    */
   async deleteUser(userId) {
+    const token = await Utils.getAccessToken();
     const res = await fetch('/api/delete-user', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ userId }),
     });
     const result = await res.json();

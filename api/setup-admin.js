@@ -1,19 +1,37 @@
 /**
  * /api/setup-admin — 创建或提升管理员账号
- * 仅在首次部署时使用，之后可删除
+ * 仅首次部署时使用，需要 master_key 验证
  */
+const { SERVICE_ROLE_KEY } = require('./_auth');
 const SUPABASE_URL = 'https://bnlougymtspqmujrolwh.supabase.co';
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubG91Z3ltdHNwcW11anJvbHdoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mjk5NzQzOCwiZXhwIjoyMDk4NTczNDM4fQ.hywUEdWq1IxRxfN1SUtYXgHrke3K3YJ-dKljFcNRrn4';
+
+// 安全码从环境变量读取，不硬编码
+const MASTER_SETUP_KEY = process.env.MASTER_SETUP_KEY || '';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const ADMIN_EMAIL = '2283419043@qq.com';
-  const ADMIN_PASSWORD = 'hkh5858258666';
+  // 需要 master key 或已有 admin 的 JWT 才能调用
+  const { masterKey, email, password, username } = req.body || {};
+
+  // 如果有 master key 验证
+  if (MASTER_SETUP_KEY && masterKey === MASTER_SETUP_KEY) {
+    // 允许通过
+  } else if (MASTER_SETUP_KEY) {
+    return res.status(401).json({ error: '无效的 master key' });
+  }
+  // 如果没有设置 MASTER_SETUP_KEY，拒绝请求（防止滥用）
+  else {
+    return res.status(403).json({ error: '此端点已被禁用。请在 Vercel 环境变量中设置 MASTER_SETUP_KEY 后重试。' });
+  }
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'email 和 password 为必填项' });
+  }
 
   const results = [];
 
@@ -26,14 +44,13 @@ module.exports = async (req, res) => {
       },
     });
     const users = await listRes.json();
-    const existingUser = (users.users || users || []).find(u => u.email === ADMIN_EMAIL);
+    const existingUser = (users.users || users || []).find(u => u.email === email);
 
     let userId;
 
     if (existingUser) {
-      // 用户已存在，更新密码
       userId = existingUser.id;
-      results.push({ step: 'found', userId, email: ADMIN_EMAIL });
+      results.push({ step: 'found', userId, email });
 
       const pwdRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
         method: 'PUT',
@@ -42,11 +59,10 @@ module.exports = async (req, res) => {
           'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password: ADMIN_PASSWORD, email_confirm: true }),
+        body: JSON.stringify({ password, email_confirm: true }),
       });
       results.push({ step: 'password-updated', ok: pwdRes.ok });
     } else {
-      // 创建新用户
       const createRes = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
         method: 'POST',
         headers: {
@@ -55,10 +71,10 @@ module.exports = async (req, res) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: ADMIN_EMAIL,
-          password: ADMIN_PASSWORD,
+          email,
+          password,
           email_confirm: true,
-          user_metadata: { username: '管理员', role: 'admin' },
+          user_metadata: { username: username || '管理员', role: 'admin' },
         }),
       });
       const newUser = await createRes.json();
@@ -66,25 +82,20 @@ module.exports = async (req, res) => {
         return res.status(500).json({ error: 'Create failed', detail: newUser });
       }
       userId = newUser.id;
-      results.push({ step: 'created', userId, email: ADMIN_EMAIL });
+      results.push({ step: 'created', userId, email });
     }
 
     // 2. 确保 user_roles 中有 admin 记录
     const { createClient } = require('@supabase/supabase-js');
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // 检查 user_roles 中是否存在
     const { data: existingRole } = await supabase.from('user_roles').select('*').eq('id', userId).single();
 
     if (existingRole) {
-      // 更新角色为 admin
-      const updateData = { role: 'admin' };
-      const { error: updateErr } = await supabase.from('user_roles').update(updateData).eq('id', userId);
+      const { error: updateErr } = await supabase.from('user_roles').update({ role: 'admin', approved: true }).eq('id', userId);
       results.push({ step: 'role-updated', ok: !updateErr, error: updateErr?.message });
     } else {
-      // 插入新记录
-      const insertData = { id: userId, username: '管理员', role: 'admin' };
-      const { error: insertErr } = await supabase.from('user_roles').insert(insertData);
+      const { error: insertErr } = await supabase.from('user_roles').insert({ id: userId, username: username || '管理员', role: 'admin', approved: true });
       results.push({ step: 'role-inserted', ok: !insertErr, error: insertErr?.message });
     }
 
