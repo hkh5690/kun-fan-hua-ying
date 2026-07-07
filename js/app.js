@@ -60,6 +60,22 @@ const App = {
       editorSearch.addEventListener('keydown', (e) => this._handleEditorKey(e));
     }
 
+    // 剪辑下拉框事件委托（点击选中）
+    const editorDropdown = document.getElementById('editorDropdown');
+    if (editorDropdown) {
+      editorDropdown.addEventListener('click', (e) => {
+        const item = e.target.closest('.dropdown-item');
+        if (!item) return;
+        this.selectEditor(item.dataset.id, item.textContent);
+      });
+      editorDropdown.addEventListener('touchend', (e) => {
+        const item = e.target.closest('.dropdown-item');
+        if (!item) return;
+        e.preventDefault();
+        this.selectEditor(item.dataset.id, item.textContent);
+      });
+    }
+
     // Header 状态筛选标签
     document.getElementById('statusFilterTabs').addEventListener('click', (e) => {
       const tab = e.target.closest('.status-tab');
@@ -228,7 +244,7 @@ const App = {
       dropdown.innerHTML = '<div class="dropdown-empty">未找到匹配的剪辑</div>';
     } else {
       dropdown.innerHTML = filtered.map((u, i) =>
-        `<div class="dropdown-item${i === 0 ? ' active' : ''}" data-id="${u.id}" data-name="${Utils.escHtml(u.username)}" onclick="App.selectEditor('${u.id}','${Utils.escHtml(u.username).replace(/'/g, "\\'")}')">${Utils.escHtml(u.username)}</div>`
+        `<div class="dropdown-item${i === 0 ? ' active' : ''}" data-id="${u.id}" data-name="${Utils.escHtml(u.username)}">${Utils.escHtml(u.username)}</div>`
       ).join('');
     }
     dropdown.style.display = 'block';

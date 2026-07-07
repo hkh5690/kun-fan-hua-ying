@@ -511,3 +511,19 @@ body{
   .detail-grid{grid-template-columns:1fr;}
   .dash-grid{grid-template-columns:1fr;}
 }
+/* ── 手机端派单适配 ── */
+@media(max-width:700px){
+  .assign-card{padding:14px 14px;}
+  .assign-card .assign-header{font-size:13px;}
+  .searchable-select .form-input{font-size:16px !important;padding:12px 14px;}
+  .searchable-dropdown{max-height:220px;z-index:400;box-shadow:0 12px 40px rgba(0,0,0,0.5);}
+  .searchable-dropdown .dropdown-item{padding:14px 16px;font-size:15px;min-height:48px;
+    display:flex;align-items:center;}
+  .modal{max-width:100%;margin:0;border-radius:16px 16px 0 0;
+    max-height:92vh;position:fixed;bottom:0;left:0;right:0;
+    animation:modalInMobile 0.3s ease;}
+  @keyframes modalInMobile{from{transform:translateY(100%);}to{transform:translateY(0);}}
+}
+@media(max-width:480px){
+  .selected-editor span{font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+}
