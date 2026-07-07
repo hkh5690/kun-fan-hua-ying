@@ -47,6 +47,7 @@ const Orders = {
       created_by: user.id,
       editor_price: orderData.editorPrice || 0,
       assigned_to: orderData.assignedTo || null,
+    };
 
     const { error } = await supabase.from('orders').insert(record);
 
