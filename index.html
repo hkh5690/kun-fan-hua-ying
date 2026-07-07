@@ -279,15 +279,25 @@
             <input type="text" id="fProducer" placeholder="你的名字或昵称">
           </div>
         </div>
-        <div class="form-group" id="assignGroup" style="display:none;">
-          <label>分配给剪辑</label>
-          <select id="fAssignedTo">
-            <option value="">不分配</option>
-          </select>
-        </div>
-        <div class="form-group" id="editorPriceGroup" style="display:none;">
-          <label>剪辑到手金额 (¥)</label>
-          <input type="number" id="fEditorPrice" placeholder="0" step="0.01" min="0">
+        <!-- 🎯 派单区域（仅管理员/客服可见）-->
+        <div id="assignCard" class="assign-card" style="display:none;">
+          <div class="assign-header">派单分配</div>
+          <div class="form-group">
+            <label>搜索并选择剪辑</label>
+            <div class="searchable-select" id="editorSelectWrap">
+              <input type="text" id="editorSearchInput" class="form-input" placeholder="🔍 输入剪辑名称搜索..." autocomplete="off">
+              <input type="hidden" id="fAssignedTo" value="">
+              <div class="searchable-dropdown" id="editorDropdown" style="display:none;"></div>
+              <div class="selected-editor" id="selectedEditor" style="display:none;">
+                <span id="selectedEditorName"></span>
+                <button type="button" class="btn-unassign" onclick="App.clearAssigned()" title="取消分配">✕</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>剪辑到手金额 (¥)</label>
+            <input type="number" id="fEditorPrice" placeholder="0" step="0.01" min="0">
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group">

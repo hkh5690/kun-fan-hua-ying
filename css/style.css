@@ -310,6 +310,76 @@ body{
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .form-group input[readonly]{background:rgba(0,0,0,0.2);color:var(--text-muted);}
 
+/* ── 派单区域（显眼样式）── */
+.assign-card {
+  background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.06));
+  border: 1px solid rgba(59,130,246,0.25);
+  border-radius: var(--radius-lg, 12px);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+}
+.assign-card .assign-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 700; color: var(--primary, #3B82F6);
+  margin-bottom: 14px;
+}
+.assign-card .assign-header::before {
+  content: '🎯'; font-size: 18px;
+}
+.assign-row {
+  display: grid; grid-template-columns: 2fr 1fr; gap: 14px;
+}
+
+/* ── 可搜索下拉框 ── */
+.searchable-select { position: relative; }
+.searchable-select .form-input {
+  width: 100%; padding: 11px 14px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm, 8px);
+  font-size: 14px; background: var(--bg, #0B1929); color: var(--text, #E2E8F0);
+  outline: none; transition: all 0.2s; font-family: inherit;
+}
+.searchable-select .form-input:focus {
+  border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ghost);
+}
+.searchable-dropdown {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 300;
+  max-height: 180px; overflow-y: auto;
+  background: var(--bg-elevated, #132233);
+  border: 1px solid var(--border); border-top: none;
+  border-radius: 0 0 var(--radius-sm, 8px) var(--radius-sm, 8px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.searchable-dropdown .dropdown-item {
+  padding: 10px 14px; font-size: 14px; cursor: pointer;
+  color: var(--text, #E2E8F0); transition: background 0.15s;
+}
+.searchable-dropdown .dropdown-item:hover,
+.searchable-dropdown .dropdown-item.active {
+  background: rgba(59,130,246,0.15); color: var(--primary, #3B82F6);
+}
+.searchable-dropdown .dropdown-empty {
+  padding: 12px 14px; font-size: 13px; color: var(--text-muted, #64748B);
+  text-align: center;
+}
+
+/* ── 已选剪辑标签 ── */
+.selected-editor {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px; padding: 10px 14px;
+  background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3);
+  border-radius: var(--radius-sm, 8px);
+}
+.selected-editor span {
+  font-size: 14px; font-weight: 600; color: var(--primary, #3B82F6);
+  flex: 1;
+}
+.btn-unassign {
+  background: none; border: none; font-size: 16px;
+  color: var(--text-muted, #64748B); cursor: pointer;
+  padding: 2px 6px; border-radius: 4px; transition: all 0.2s;
+}
+.btn-unassign:hover { color: var(--danger, #EF4444); background: rgba(239,68,68,0.1); }
+
 /* ════════════════ DASHBOARD ════════════════ */
 .dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-bottom:20px;}
 .dash-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;}

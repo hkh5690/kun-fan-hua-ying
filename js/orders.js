@@ -46,10 +46,7 @@ const Orders = {
       deadline: orderData.deadline || '',
       created_by: user.id,
       editor_price: orderData.editorPrice || 0,
-    };
-    if (orderData.assignedTo) {
-      record.assigned_to = orderData.assignedTo;
-    }
+      assigned_to: orderData.assignedTo || null,
 
     const { error } = await supabase.from('orders').insert(record);
 
@@ -83,9 +80,8 @@ const Orders = {
       deadline: orderData.deadline || '',
       editor_price: orderData.editorPrice || 0,
     };
-    if (orderData.assignedTo) {
-      updates.assigned_to = orderData.assignedTo;
-    }
+    // 始终更新 assigned_to（包括清空分配）
+    updates.assigned_to = orderData.assignedTo || null;
 
     const { error } = await supabase
       .from('orders')

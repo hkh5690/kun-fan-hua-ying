@@ -41,6 +41,25 @@ const App = {
     // 搜索框
     document.getElementById('searchInput').addEventListener('input', () => this.renderOrders());
 
+    // 剪辑搜索框
+    const editorSearch = document.getElementById('editorSearchInput');
+    if (editorSearch) {
+      editorSearch.addEventListener('input', (e) => this._filterEditors(e.target.value));
+      editorSearch.addEventListener('focus', () => {
+        const sel = document.getElementById('selectedEditor');
+        if (!sel.style.display || sel.style.display === 'none') {
+          this._filterEditors(editorSearch.value);
+        }
+      });
+      editorSearch.addEventListener('blur', () => {
+        setTimeout(() => {
+          const dd = document.getElementById('editorDropdown');
+          if (dd) dd.style.display = 'none';
+        }, 200);
+      });
+      editorSearch.addEventListener('keydown', (e) => this._handleEditorKey(e));
+    }
+
     // Header 状态筛选标签
     document.getElementById('statusFilterTabs').addEventListener('click', (e) => {
       const tab = e.target.closest('.status-tab');
@@ -186,17 +205,89 @@ const App = {
   },
 
   /**
-   * 加载剪辑列表到分配下拉框
+   * 加载剪辑列表到可搜索下拉框
    */
+  _editors: [],
   async loadEditorList() {
     try {
       const { data: users } = await supabase.from('user_roles').select('id, username').eq('role', 'editor');
-      const sel = document.getElementById('fAssignedTo');
-      if (sel) {
-        sel.innerHTML = '<option value="">不分配</option>' +
-          (users || []).map(u => `<option value="${u.id}">${Utils.escHtml(u.username)}</option>`).join('');
-      }
+      this._editors = users || [];
+      this._filterEditors('');
     } catch (e) { console.error('加载剪辑列表失败:', e); }
+  },
+
+  /**
+   * 搜索/筛选剪辑
+   */
+  _filterEditors(query) {
+    const dropdown = document.getElementById('editorDropdown');
+    if (!dropdown) return;
+    const q = (query || '').toLowerCase();
+    const filtered = q ? this._editors.filter(u => u.username.toLowerCase().includes(q)) : this._editors;
+    if (filtered.length === 0) {
+      dropdown.innerHTML = '<div class="dropdown-empty">未找到匹配的剪辑</div>';
+    } else {
+      dropdown.innerHTML = filtered.map((u, i) =>
+        `<div class="dropdown-item${i === 0 ? ' active' : ''}" data-id="${u.id}" data-name="${Utils.escHtml(u.username)}" onclick="App.selectEditor('${u.id}','${Utils.escHtml(u.username).replace(/'/g, "\\'")}')">${Utils.escHtml(u.username)}</div>`
+      ).join('');
+    }
+    dropdown.style.display = 'block';
+  },
+
+  /**
+   * 选中剪辑
+   */
+  selectEditor(id, name) {
+    document.getElementById('fAssignedTo').value = id;
+    document.getElementById('editorSearchInput').style.display = 'none';
+    document.getElementById('editorDropdown').style.display = 'none';
+    document.getElementById('selectedEditorName').textContent = name;
+    document.getElementById('selectedEditor').style.display = 'flex';
+    // 确保取消按钮可见
+    const unassignBtn = document.querySelector('#selectedEditor .btn-unassign');
+    if (unassignBtn) unassignBtn.style.display = '';
+  },
+
+  /**
+   * 清除分配
+   */
+  clearAssigned() {
+    document.getElementById('fAssignedTo').value = '';
+    document.getElementById('editorSearchInput').value = '';
+    document.getElementById('editorSearchInput').style.display = 'block';
+    document.getElementById('selectedEditor').style.display = 'none';
+    document.getElementById('editorDropdown').style.display = 'none';
+    document.getElementById('editorSearchInput').focus();
+  },
+
+  /**
+   * 键盘导航剪辑下拉
+   */
+  _handleEditorKey(e) {
+    const dropdown = document.getElementById('editorDropdown');
+    if (dropdown.style.display === 'none') return;
+    const items = dropdown.querySelectorAll('.dropdown-item');
+    if (!items.length) return;
+    let idx = Array.from(items).findIndex(el => el.classList.contains('active'));
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      idx = (idx + 1) % items.length;
+      items.forEach(el => el.classList.remove('active'));
+      items[idx].classList.add('active');
+      items[idx].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      idx = (idx - 1 + items.length) % items.length;
+      items.forEach(el => el.classList.remove('active'));
+      items[idx].classList.add('active');
+      items[idx].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (idx >= 0) items[idx].click();
+    } else if (e.key === 'Escape') {
+      dropdown.style.display = 'none';
+    }
   },
 
   /**
@@ -364,21 +455,29 @@ const App = {
     document.getElementById('fDeposit').value = o.deposit || '';
     document.getElementById('fBalance').value = o.balance || '';
     document.getElementById('fDeadline').value = o.deadline || '';
-    try { document.getElementById('fAssignedTo').value = o.assigned_to || ''; } catch {}
-    try { document.getElementById('fEditorPrice').value = o.editor_price || ''; } catch {}
+    document.getElementById('fEditorPrice').value = o.editor_price || '';
 
     // 剪辑只能查看不能改
     if (isEditor) {
       document.getElementById('fStatus').disabled = true;
     }
 
-    // 显示分配信息
-    const assignGroup = document.getElementById('assignGroup');
-    if (assignedName) {
-      assignGroup.style.display = 'block';
-      assignGroup.querySelector('label').textContent = '分配给: ' + assignedName;
+    // 显示分配信息（只读视图）
+    const assignCard = document.getElementById('assignCard');
+    if (assignedName && (Auth.isAdmin() || Auth.isCS())) {
+      assignCard.style.display = 'block';
+      document.getElementById('editorSearchInput').style.display = 'none';
+      document.getElementById('editorDropdown').style.display = 'none';
+      document.getElementById('selectedEditorName').textContent = assignedName;
+      document.getElementById('selectedEditor').style.display = 'flex';
+      // 隐藏取消分配按钮（只读模式）
+      document.querySelector('#selectedEditor .btn-unassign').style.display = 'none';
+    } else if (Auth.isAdmin() || Auth.isCS()) {
+      assignCard.style.display = 'block';
+      document.getElementById('editorSearchInput').style.display = 'block';
+      document.getElementById('selectedEditor').style.display = 'none';
     } else {
-      assignGroup.style.display = 'none';
+      assignCard.style.display = 'none';
     }
 
     // 替换提交按钮为操作按钮
@@ -441,21 +540,29 @@ const App = {
     document.querySelectorAll('#orderForm input, #orderForm select, #orderForm textarea').forEach(el => el.disabled = false);
     const sb = document.getElementById('modalSubmitBtn');
     if (!sb) {
-      // 按钮被 toggleDetail 销毁了，重建
       const ad = document.querySelector('#orderForm .detail-actions');
       if (ad) ad.innerHTML = '<button type="submit" class="btn btn-primary" id="modalSubmitBtn">💾 保存订单</button><button type="button" class="btn btn-outline" onclick="App.closeModal()">取消</button>';
     }
 
-    // 分配下拉框 + 剪辑金额：仅 admin 和 cs 可见
-    const assignGroup = document.getElementById('assignGroup');
-    const editorPriceGroup = document.getElementById('editorPriceGroup');
+    // 分配区域：仅 admin 和 cs 可见
+    const assignCard = document.getElementById('assignCard');
     if (Auth.isAdmin() || Auth.isCS()) {
-      assignGroup.style.display = 'block';
-      editorPriceGroup.style.display = 'block';
-      this.loadEditorList();
+      assignCard.style.display = 'block';
+      // 加载剪辑列表（异步）
+      this.loadEditorList().then(() => {
+        // 编辑时回填已分配的剪辑
+        if (editId) {
+          const o = this.orders.find(x => x.id === editId);
+          if (o && o.assigned_to) {
+            const editor = this._editors.find(e => e.id === o.assigned_to);
+            if (editor) {
+              this.selectEditor(editor.id, editor.username);
+            }
+          }
+        }
+      });
     } else {
-      assignGroup.style.display = 'none';
-      editorPriceGroup.style.display = 'none';
+      assignCard.style.display = 'none';
     }
 
     if (editId) {
@@ -480,12 +587,18 @@ const App = {
       document.getElementById('fDeposit').value = o.deposit || '';
       document.getElementById('fBalance').value = o.balance || '';
       document.getElementById('fDeadline').value = o.deadline || '';
-      document.getElementById('fAssignedTo').value = o.assigned_to || '';
       document.getElementById('fEditorPrice').value = o.editor_price || '';
     } else {
       title.textContent = '新增订单';
       document.getElementById('editId').value = '';
       document.getElementById('orderForm').reset();
+      // 重置搜索组件
+      document.getElementById('editorSearchInput').style.display = 'block';
+      document.getElementById('editorSearchInput').value = '';
+      document.getElementById('selectedEditor').style.display = 'none';
+      document.getElementById('editorDropdown').style.display = 'none';
+      document.getElementById('fAssignedTo').value = '';
+      document.getElementById('fEditorPrice').value = '';
       document.getElementById('fOrderNumber').value = Utils.genOrderNumber(this.orders);
       document.getElementById('fStatus').value = '待付定金';
     }
@@ -497,6 +610,9 @@ const App = {
     this.selectedId = null;
     // 恢复表单为可编辑状态
     document.querySelectorAll('#orderForm input, #orderForm select, #orderForm textarea').forEach(el => el.disabled = false);
+    // 恢复取消分配按钮
+    const unassignBtn = document.querySelector('#selectedEditor .btn-unassign');
+    if (unassignBtn) unassignBtn.style.display = '';
     // 始终恢复提交按钮
     const actionsDiv = document.querySelector('#orderForm .detail-actions');
     if (actionsDiv) {
