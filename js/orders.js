@@ -45,7 +45,11 @@ const Orders = {
       status: orderData.status || '待付定金',
       deadline: orderData.deadline || '',
       created_by: user.id,
+      editor_price: orderData.editorPrice || 0,
     };
+    if (orderData.assignedTo) {
+      record.assigned_to = orderData.assignedTo;
+    }
 
     const { error } = await supabase.from('orders').insert(record);
 
@@ -77,7 +81,11 @@ const Orders = {
       balance: orderData.balance || 0,
       status: orderData.status || '待付定金',
       deadline: orderData.deadline || '',
+      editor_price: orderData.editorPrice || 0,
     };
+    if (orderData.assignedTo) {
+      updates.assigned_to = orderData.assignedTo;
+    }
 
     const { error } = await supabase
       .from('orders')

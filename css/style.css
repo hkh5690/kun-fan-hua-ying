@@ -47,14 +47,31 @@ body{
 }
 @keyframes bgPulse{0%{opacity:0.7;transform:scale(1);}100%{opacity:1;transform:scale(1.04);}}
 .login-page>*{position:relative;z-index:1;}
-.login-brand{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding-right:64px;max-width:360px;}
-.login-brand .brand-icon{font-size:48px;width:68px;height:68px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:18px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);}
+.login-brand{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding-right:64px;max-width:380px;}
+.brand-logo-wrap{width:100px;height:100px;border-radius:20px;overflow:hidden;margin-bottom:20px;border:2px solid rgba(255,255,255,0.25);box-shadow:0 0 30px rgba(255,255,255,0.08),0 8px 32px rgba(0,0,0,0.3);background:rgba(255,255,255,0.05);}
+.brand-logo-img{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(1.1) contrast(1.05) saturate(0.9);}
 .login-brand h1{font-size:34px;font-weight:800;color:#fff;letter-spacing:4px;margin-bottom:6px;line-height:1.2;}
 .login-brand .brand-desc{font-size:14px;color:rgba(255,255,255,0.6);line-height:1.7;max-width:280px;}
 .login-brand .brand-features{display:flex;flex-direction:column;gap:12px;margin-top:32px;}
 .login-brand .brand-feature{display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,0.7);}
 .login-brand .brand-feature .feat-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);flex-shrink:0;}
-.login-wrapper{flex-shrink:0;}
+.login-wrapper{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:20px;}
+/* 身份选择卡片 */
+.role-cards{display:flex;gap:16px;width:420px;}
+.role-card{
+  flex:1;padding:20px 16px;border-radius:var(--radius-lg);cursor:pointer;
+  text-align:center;transition:all 0.3s ease;border:2px solid rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.06);backdrop-filter:blur(10px);
+}
+.role-card:hover{border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.1);}
+.role-card.active{
+  border-color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.15);
+  box-shadow:0 0 24px rgba(43,87,154,0.4);
+}
+.role-card-icon{font-size:32px;margin-bottom:8px;line-height:1;}
+.role-card-title{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px;}
+.role-card-sub{font-size:11px;color:rgba(255,255,255,0.5);}
+.admin-login-hint{font-size:11px;color:rgba(255,255,255,0.35);text-align:center;margin-top:-8px;}
 .form-card{background:rgba(255,255,255,0.97);border-radius:var(--radius-xl);padding:40px 36px;width:420px;box-shadow:0 24px 80px rgba(0,0,0,0.3),0 0 0 1px rgba(255,255,255,0.08);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);}
 .form-card-header{text-align:center;margin-bottom:24px;}
 .form-card-header .card-avatar{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--login-primary),var(--login-primary-light));display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:12px;box-shadow:0 4px 12px rgba(43,87,154,0.3);}
@@ -92,8 +109,8 @@ body{
   padding-right:max(24px, env(safe-area-inset-right));
 }
 .header-left{display:flex;align-items:center;gap:16px;flex-shrink:0;}
-.header-logo{font-size:16px;font-weight:700;color:var(--text);letter-spacing:1px;white-space:nowrap;display:flex;align-items:center;gap:6px;}
-.header-logo .logo-icon{font-size:20px;}
+.header-logo{font-size:16px;font-weight:700;color:var(--text);letter-spacing:1px;white-space:nowrap;display:flex;align-items:center;gap:8px;}
+.header-logo-img{width:30px;height:30px;border-radius:6px;object-fit:cover;flex-shrink:0;filter:brightness(1.15) contrast(1.05) saturate(0.85);box-shadow:0 0 8px rgba(255,255,255,0.05);}
 
 /* Header 状态筛选标签 */
 .status-tabs{display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:3px;}
@@ -152,7 +169,8 @@ body{
 .content-area .inner{max-width:1200px;margin:0 auto;}
 
 /* 订单表格 */
-.order-table-wrap{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;}
+.order-table-wrap{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-lg);overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.order-table{min-width:650px;}
 .order-table{width:100%;border-collapse:collapse;}
 .order-table thead th{
   padding:12px 16px;font-size:11px;font-weight:600;color:var(--text-muted);
@@ -168,8 +186,8 @@ body{
 .order-table tbody tr:hover{background:rgba(59,130,246,0.06);}
 .order-table tbody tr.row-selected{background:rgba(59,130,246,0.1);}
 .order-table tbody tr:last-child td{border-bottom:none;}
-.order-table .cell-customer{color:var(--text);font-weight:500;}
-.order-table .cell-title{max-width:240px;overflow:hidden;text-overflow:ellipsis;}
+.order-table .cell-customer{color:var(--text);font-weight:500;max-width:120px;overflow:hidden;text-overflow:ellipsis;}
+.order-table .cell-title{max-width:200px;overflow:hidden;text-overflow:ellipsis;}
 .order-table .cell-amount{color:var(--gold);font-weight:700;text-align:right;}
 .order-table .cell-amount small{font-size:10px;color:var(--text-muted);display:block;font-weight:400;}
 .order-table .cell-actions{text-align:center;}

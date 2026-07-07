@@ -134,22 +134,77 @@ const Settings = {
     const area = document.getElementById('userListArea');
     area.style.display = this.showUserMgmt ? 'block' : 'none';
     if (this.showUserMgmt) {
-      area.innerHTML = users.map(u => `
+      area.innerHTML = users.map(u => {
+        const roleLabel = u.role === 'admin' ? '👑 管理员' : u.role === 'cs' ? '💼 客服' : '✂️ 剪辑';
+        const roleTag = u.role === 'admin' ? 'tag-cancel' : u.role === 'cs' ? 'tag-video' : 'tag-recite';
+        const notApproved = u.role === 'cs' && u.approved === false;
+        const isCurrent = u.id === Auth.currentUser?.id;
+        return `
         <div class="user-list-item">
           <div class="user-list-left">
             <div class="user-list-avatar">${(u.username || '?')[0].toUpperCase()}</div>
             <div class="user-list-info">
               <span class="user-list-name">${Utils.escHtml(u.username)}</span>
+              ${notApproved ? '<span style="font-size:11px;color:var(--warning);">⏳ 待审批</span>' : ''}
             </div>
           </div>
-          <div class="user-list-role">
-            <span class="tag ${u.role === 'admin' ? 'tag-cancel' : 'tag-video'}">${u.role === 'admin' ? '👑 管理员' : '👤 用户'}</span>
+          <div class="user-list-role" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="tag ${roleTag}">${roleLabel}</span>
+            ${notApproved ? `<button class="btn btn-sm btn-success" onclick="Settings.approveUser('${u.id}')">✅ 通过</button>` : ''}
+            ${!isCurrent && !notApproved ? `
+              <select onchange="if(this.value)Settings.setRole('${u.id}',this.value,this)" style="font-size:11px;padding:3px 6px;background:var(--bg-elevated);color:var(--text);border:1px solid var(--border);border-radius:4px;">
+                <option value="">切换角色</option>
+                ${['admin','cs','editor'].filter(r=>r!==u.role).map(r=>`<option value="${r}">${r==='admin'?'👑 管理员':r==='cs'?'💼 客服':'✂️ 剪辑'}</option>`).join('')}
+              </select>
+            ` : ''}
           </div>
-          ${u.id !== Auth.currentUser?.id
+          ${!isCurrent
             ? `<button class="btn btn-sm btn-danger" onclick="Settings.deleteUserConfirm('${u.id}', '${Utils.escHtml(u.username)}')">删除</button>`
-            : '<span style="font-size:11px;color:var(--text-secondary);">当前用户</span>'}
-        </div>
-      `).join('');
+            : '<span style="font-size:11px;color:var(--text-muted);">当前用户</span>'}
+        </div>`;
+      }).join('');
+    }
+  },
+
+  /**
+   * 直接设置用户角色
+   */
+  async setRole(userId, role, selectEl) {
+    const labels = { admin: '👑 管理员', cs: '💼 客服', editor: '✂️ 剪辑' };
+    Utils.showConfirm(`将用户角色切换为 ${labels[role]}？`, async () => {
+      try {
+        const res = await fetch('/api/change-role', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, role }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || '操作失败');
+        Utils.showToast('✅ 角色已更新为' + labels[role]);
+        await this.renderUserList();
+      } catch (e) {
+        Utils.showToast('❌ ' + e.message);
+      }
+    });
+    if (selectEl) selectEl.value = '';
+  },
+
+  /**
+   * 审批客服账号
+   */
+  async approveUser(userId) {
+    try {
+      const res = await fetch('/api/change-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, approved: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '审批失败');
+      Utils.showToast('✅ 已审批通过');
+      await this.renderUserList();
+    } catch (e) {
+      Utils.showToast('❌ ' + e.message);
     }
   },
 

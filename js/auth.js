@@ -55,11 +55,11 @@ const Auth = {
     return result;
   },
 
-  async verifyAndSignUp(token, code, password, username) {
+  async verifyAndSignUp(token, code, password, username, role) {
     const res = await fetch('/api/verify-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, code, password, username }),
+      body: JSON.stringify({ token, code, password, username, role: role || 'editor' }),
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.error || '验证失败');
@@ -112,6 +112,20 @@ const Auth = {
    */
   isAdmin() {
     return this.currentUser && this.currentUser.role === 'admin';
+  },
+
+  /**
+   * 判断当前用户是否为客服
+   */
+  isCS() {
+    return this.currentUser && this.currentUser.role === 'cs';
+  },
+
+  /**
+   * 判断当前用户是否为剪辑
+   */
+  isEditor() {
+    return this.currentUser && this.currentUser.role === 'editor';
   },
 
   /**

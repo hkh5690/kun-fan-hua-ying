@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { token, code, password, username } = req.body || {};
+    const { token, code, password, username, role } = req.body || {};
     if (!token || !code || !password) return res.status(400).json({ error: '缺少参数' });
 
     // 验证 token
@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
         email: payload.email,
         password,
         email_confirm: true,
-        user_metadata: { username: username || payload.email.split('@')[0] },
+        user_metadata: { username: username || payload.email.split('@')[0], role: role || 'editor' },
       }),
     });
 

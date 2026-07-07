@@ -28,7 +28,7 @@
   <div class="login-ambient"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
   <!-- 左侧品牌区 -->
   <div class="login-brand">
-    <div class="brand-icon">🌸</div>
+    <div class="brand-logo-wrap"><img src="img/logo.jpg" alt="鲲繁花影" class="brand-logo-img"></div>
     <h1>鲲繁花影</h1>
     <p class="brand-desc">简洁高效的接单管理系统，助力自由职业者轻松管理项目与订单。</p>
     <div class="brand-features">
@@ -40,9 +40,25 @@
 
   <!-- 右侧登录卡片 -->
   <div class="login-wrapper">
+    <!-- 身份选择卡片 -->
+    <div class="role-cards" id="roleCards">
+      <div class="role-card active" data-role="editor" onclick="selectRole('editor')">
+        <div class="role-card-icon">✂️</div>
+        <div class="role-card-title">剪辑登录</div>
+        <div class="role-card-sub">接单执行 · 查看分配订单</div>
+      </div>
+      <div class="role-card" data-role="cs" onclick="selectRole('cs')">
+        <div class="role-card-icon">💼</div>
+        <div class="role-card-title">客服登录</div>
+        <div class="role-card-sub">派单管理 · 分配与改价</div>
+      </div>
+    </div>
+    <div class="admin-login-hint">
+      已是管理员？任意卡片登录即可，权限由系统分配
+    </div>
     <div class="form-card">
       <div class="form-card-header">
-        <div class="card-avatar">🌸</div>
+        <div class="card-avatar"><img src="img/logo.jpg" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:12px;filter:brightness(1.15) contrast(1.05) saturate(0.85);"></div>
         <h3 id="formTitle">欢迎回来</h3>
         <p id="formSub">登录您的账号以继续</p>
       </div>
@@ -94,7 +110,7 @@
   <!-- ════════════ 层级 1: Header ════════════ -->
   <header class="header">
     <div class="header-left">
-      <span class="header-logo"><span class="logo-icon">🌸</span><span class="logo-text">鲲繁花影</span></span>
+      <span class="header-logo" onclick="App.switchPage('orders')" title="返回订单列表" style="cursor:pointer;"><img src="img/logo.jpg" alt="" class="header-logo-img"><span class="logo-text">鲲繁花影</span></span>
       <nav class="status-tabs" id="statusFilterTabs">
         <button class="status-tab active" data-filter="all">全部</button>
         <button class="status-tab" data-filter="待付定金">待付定金</button>
@@ -263,6 +279,16 @@
             <input type="text" id="fProducer" placeholder="你的名字或昵称">
           </div>
         </div>
+        <div class="form-group" id="assignGroup" style="display:none;">
+          <label>分配给剪辑</label>
+          <select id="fAssignedTo">
+            <option value="">不分配</option>
+          </select>
+        </div>
+        <div class="form-group" id="editorPriceGroup" style="display:none;">
+          <label>剪辑到手金额 (¥)</label>
+          <input type="number" id="fEditorPrice" placeholder="0" step="0.01" min="0">
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label>服务类型 *</label>
@@ -360,6 +386,14 @@
 <!-- 登录模式切换（复用原逻辑） -->
 <script>
 let loginMode = 'login';
+let loginRole = 'editor'; // 默认剪辑身份
+
+function selectRole(role) {
+  loginRole = role;
+  document.querySelectorAll('.role-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.role === role);
+  });
+}
 
 function switchMode(mode) {
   loginMode = mode || (loginMode === 'login' ? 'register' : 'login');
