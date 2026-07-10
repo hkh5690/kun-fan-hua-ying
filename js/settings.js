@@ -55,8 +55,8 @@ const Settings = {
    * 导出 CSV
    */
   exportCSV(orders) {
-    const headers = ['订单编号', '下单日期', '客户', '联系方式', '制作人', '服务类型', '标题', '描述', '总价', '定金', '尾款', '状态', '截止日期', '创建者'];
-    const keys = ['order_number', 'order_date', 'customer', 'contact', 'producer', 'service_type', 'title', 'description', 'total_price', 'deposit', 'balance', 'status', 'deadline', 'created_by'];
+    const headers = ['订单编号', '下单日期', '客户', '联系方式', '制作人', '服务类型', '标题', '描述', '总价', '定金', '尾款', '推广费', '剪辑金额', '状态', '截止日期', '创建者'];
+    const keys = ['order_number', 'order_date', 'customer', 'contact', 'producer', 'service_type', 'title', 'description', 'total_price', 'deposit', 'balance', 'promotion_fee', 'editor_price', 'status', 'deadline', 'created_by'];
     const csvRows = [headers.join(',')];
     orders.forEach(o => {
       csvRows.push(keys.map(k => {
