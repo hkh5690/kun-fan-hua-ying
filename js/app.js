@@ -466,6 +466,7 @@ const App = {
     document.getElementById('fBalance').value = o.balance || '';
     document.getElementById('fDeadline').value = o.deadline || '';
     document.getElementById('fEditorPrice').value = o.editor_price || '';
+    document.getElementById('fPromotionFee').value = o.promotion_fee || '';
 
     // 剪辑只能查看不能改
     if (isEditor) {
