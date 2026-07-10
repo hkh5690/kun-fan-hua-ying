@@ -47,6 +47,7 @@ const Orders = {
       created_by: user.id,
       editor_price: orderData.editorPrice || 0,
       assigned_to: orderData.assignedTo || null,
+      promotion_fee: orderData.promotionFee || 0,
     };
 
     const { error } = await supabase.from('orders').insert(record);
@@ -80,6 +81,7 @@ const Orders = {
       status: orderData.status || '待付定金',
       deadline: orderData.deadline || '',
       editor_price: orderData.editorPrice || 0,
+      promotion_fee: orderData.promotionFee || 0,
     };
     // 始终更新 assigned_to（包括清空分配）
     updates.assigned_to = orderData.assignedTo || null;
@@ -182,6 +184,7 @@ const Orders = {
       created_by: user.id,
       assigned_to: o.assignedTo || o.assigned_to || null,
       editor_price: o.editorPrice || o.editor_price || 0,
+      promotion_fee: o.promotionFee || o.promotion_fee || 0,
     }));
 
     const { error } = await supabase.from('orders').insert(records);

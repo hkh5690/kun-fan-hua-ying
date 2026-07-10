@@ -44,9 +44,10 @@ CREATE TABLE IF NOT EXISTS public.orders (
 ALTER TABLE public.user_roles DROP CONSTRAINT IF EXISTS user_roles_role_check;
 ALTER TABLE public.user_roles ADD CONSTRAINT user_roles_role_check CHECK (role IN ('admin', 'editor', 'cs'));
 
--- 5. 添加 assigned_to 列 + approved 列（升级已有表）
+-- 5. 添加迁移列（升级已有表）
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS assigned_to uuid REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.user_roles ADD COLUMN IF NOT EXISTS approved boolean NOT NULL DEFAULT true;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS promotion_fee float8 NOT NULL DEFAULT 0;
 
 -- 6. 开启 Row Level Security
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;

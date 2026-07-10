@@ -599,6 +599,7 @@ const App = {
       document.getElementById('fBalance').value = o.balance || '';
       document.getElementById('fDeadline').value = o.deadline || '';
       document.getElementById('fEditorPrice').value = o.editor_price || '';
+      document.getElementById('fPromotionFee').value = o.promotion_fee || '';
     } else {
       title.textContent = '新增订单';
       document.getElementById('editId').value = '';
@@ -610,6 +611,7 @@ const App = {
       document.getElementById('editorDropdown').style.display = 'none';
       document.getElementById('fAssignedTo').value = '';
       document.getElementById('fEditorPrice').value = '';
+      document.getElementById('fPromotionFee').value = '';
       document.getElementById('fOrderNumber').value = Utils.genOrderNumber(this.orders);
       document.getElementById('fStatus').value = '待付定金';
     }
@@ -654,6 +656,7 @@ const App = {
       deadline: document.getElementById('fDeadline').value || '',
       assignedTo: document.getElementById('fAssignedTo').value || null,
       editorPrice: parseFloat(document.getElementById('fEditorPrice').value) || 0,
+      promotionFee: parseFloat(document.getElementById('fPromotionFee').value) || 0,
     };
 
     try {
